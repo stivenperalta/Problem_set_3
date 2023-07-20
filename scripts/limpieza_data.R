@@ -1,56 +1,67 @@
-############################## Problem Set 3 ###################################
-# Autores: David Peralta
-# fecha: 018/07/2023
+################################################################
+# Problem Set 3: Predicting Poverty
+# Authors: por Stiven Peralta, Jazmine Galdos, Andrea Clavijo, 
+##Sergio Jiménez, Nicolás Barragán 
+################################################################
 
-# Preparación -------------------------------------------------------------
+rm(list = ls()) 
+# Loading Libraries -------------------------------------------------------
+install.packages("pacman")
+install.packages("httr")
+library("pacman") # para cargar paquetes
+p_load("GGally","psych","rpart.plot","ROCR","gamlr","modelsummary","gtsummary","naniar","PerformanceAnalytics","pastecs",
+       "writexl","dplyr","httr","tidyverse","rvest","rio","skimr","caret","ggplot2","stargazer",
+       "readr","AER","MLmetrics","smotefamily","pROC","smotefamily","rpart","randomForest","rpart", "Metrics",
+       "rattle")
+# Importing Dataset -------------------------------------------------------
 
-rm(list = ls()) # Limpiar Rstudio
+# Se importan los 4 archivos a usar
 
-pacman::p_load(ggplot2, rio, tidyverse, skimr, caret, 
-               rvest, magrittr, rstudioapi, stargazer, 
-               boot, readxl, knitr, kableExtra,
-               glmnet, sf, tmaptools, leaflet,
-               tokenizers, stopwords, SnowballC,
-               stringi, dplyr, stringr, sp, hunspell,
-               car,
-               parallel, # conocer los cores de mi pc
-               doParallel, # maximizar el procesamiento en r en función de los cores de mi pc
-               rattle) # graficar los árgoles) # Cargar paquetes requeridos
+test_hogar <- readRDS("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3/stores/test_hogar.rds")
+train_hogar <- readRDS("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3/stores/train_hogar.rds")
+test_persona <- readRDS("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3/stores/test_persona.rds")
+train_persona <- readRDS("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3/stores/train_persona.rds")
+sample_sub <- read_csv("GitHub/Problem_set_3/stores/sample_submission.csv")
 
-#Definir el directorio
-path_script<-rstudioapi::getActiveDocumentContext()$path
-path_folder<-dirname(path_script) 
-setwd(path_folder)
-getwd()
-rm(path_folder, path_script)
+# Unimos la base de datos de personas y hogares con merge usando el id del hogar
+m_test <- merge(test_hogar, test_persona, by = "id")
+m_train <- merge(train_hogar, train_persona, by = "id")
+#rm(test_hogares, test_personas,train_hogares, train_personas)
 
-# maximizo el procesamiento de r
-detectCores() # detecta los cores del computador
-registerDoParallel(6) # 6 de 8 cores de mi computador para R
-getDoParWorkers() # verifico el número de cores usados por R
+##Ahora verificamos los valores únicos de cada set (train y test)
+##Lo cual evidencia que no existen duplicados
 
-# importar datos ----------------------------------------------------------
+length(unique(m_test$id))
+length(unique(m_train$id))
 
-#train data
-train_hogar<-read_csv("../../../Problems Sets/Problem set 3/train_hogares.csv")
-train_persona<-read_csv("../../../Problems Sets/Problem set 3/train_personas.csv")
+##Una vez se han unido el los datos a nivel de persona a hogar
+#Procedemos con la creación de variables
 
-test_hogar<-read_csv("../../../Problems Sets/Problem set 3/test_hogares.csv")
-test_persona<-read_csv("../../../Problems Sets/Problem set 3/test_personas.csv")
+##Para empezar, empezamos por la variable de su vive en cabecera o en 
+##zona urbana: convertir variable "Clase" del dataset original
 
-train_hogar<-train_hogar %>% mutate(sample_level="train_hogar")
-train_persona<-train_persona %>% mutate(sample_level="train_persona")
 
-test_hogar<-test_hogar %>% mutate(sample_level="test_hogar")
-test_persona<-test_persona %>% mutate(sample_level="test_persona")
+#dicotómica Cabecera = 1 si vive en una cabecera municipal, 
+##0 si vive en la zona rural
 
-summary(test_hogar, train_hogar)
+m_test$v.cabecera <- ifelse(m_test$Clase.x == 1, 1, 
+                                ifelse(m_test$Clase.x == 2, 0, 0
+                                ))
 
-# guardo las bases en formato rds
-saveRDS(train_hogar, file = "../stores/train_hogar.rds")
-saveRDS(test_hogar, file = "../stores/test_hogar.rds")
-saveRDS(train_persona, file = "../stores/train_persona.rds")
-saveRDS(test_persona, file = "../stores/test_persona.rds")
+m_test <- m_test %>%
+  mutate(v.cabecera = factor(m_test$v.cabecera, 
+                                 levels = c(0,1),
+                                 labels = c("Urbana", "Vive en cabecera")))
 
-# para importar las bases utilizo readRDS()
-train_hogar <- readRDS("../stores/train_hogar.rds")
+
+
+m_train$v.cabecera <- ifelse(m_train$Clase.x == 1, 1, 
+                                 ifelse(m_train$Clase.x == 2, 0, 0
+                                 ))
+
+m_train <- m_train %>%
+  mutate(v.cabecera = factor(m_train$v.cabecera, 
+                                 levels = c(0,1),
+                                 labels = c("Urbana", "Vive en cabecera")))
+
+

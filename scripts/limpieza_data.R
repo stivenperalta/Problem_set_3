@@ -34,12 +34,11 @@ m_train <- merge(train_hogar, train_persona, by = "id")
 length(unique(m_test$id))
 length(unique(m_train$id))
 
-##Una vez se han unido el los datos a nivel de persona a hogar
+##Una vez se han unido el los datos a nivel de persona a hogar-------------------------------------------------------
 #Procedemos con la creación de variables
 
-##Para empezar, empezamos por la variable de su vive en cabecera o en 
+##Para empezar, empezamos por la variable de si vive en cabecera o en 
 ##zona urbana: convertir variable "Clase" del dataset original
-
 
 #dicotómica Cabecera = 1 si vive en una cabecera municipal, 
 ##0 si vive en la zona rural
@@ -51,8 +50,7 @@ m_test$v.cabecera <- ifelse(m_test$Clase.x == 1, 1,
 m_test <- m_test %>%
   mutate(v.cabecera = factor(m_test$v.cabecera, 
                                  levels = c(0,1),
-                                 labels = c("Urbana", "Vive en cabecera")))
-
+                                 labels = c("Rural", "Vive en cabecera")))
 
 
 m_train$v.cabecera <- ifelse(m_train$Clase.x == 1, 1, 
@@ -62,6 +60,41 @@ m_train$v.cabecera <- ifelse(m_train$Clase.x == 1, 1,
 m_train <- m_train %>%
   mutate(v.cabecera = factor(m_train$v.cabecera, 
                                  levels = c(0,1),
-                                 labels = c("Urbana", "Vive en cabecera")))
+                                 labels = c("Rural", "Vive en cabecera")))
+### Ahora vamos a crear las variables relacionadas con condiciones del hogar
+
+## Primero: tipo de vivienda
+
+m_test <- m_test %>%
+  mutate(P5090 = factor(m_test$P5090, 
+                        levels = c(1,2,3,4,5,6),
+                        labels = c("Propia totalmente pagada", "Propia, la están pagando", "Arriendo o subarriendo", "Usufructo", "posesión sin título", "Otra")))
+
+m_train <- m_train %>%
+  mutate(P5090 = factor(m_train$P5090, 
+                        levels = c(1,2,3,4,5,6),
+                        labels = c("Propia totalmente pagada", "Propia, la están pagando", "Arriendo o subarriendo", "Usufructo", "posesión sin título", "Otra")))
+
+m_test <- rename(m_test, Tipodevivienda = P5090)
+m_train <- rename(m_train, Tipodevivienda = P5090)
+
+##segundo, Hacinamiento: se determina que hay hacinamiento cuando residen más de 3.4 
+##personas por habitación, nos sirve como proxy de la variable de vivienda
+##usada en las mediciones de pobreza
+##se saca la proporción entre personas en el hogar y la cantidad de cuartos
+
+m_test$PersonaxCuarto <-  m_test$Nper / m_test$P5010
+m_train$PersonaxCuarto <-  m_train$Nper / m_train$P5010
+
+##Variables relacionadas con educación y experiencia laboral
 
 
+
+
+
+
+##renombramos la variable Nper correspondientes al número de 
+##personas por hogar
+
+m_test <- rename(m_test, Num.personashogar = Nper)
+m_train <- rename(m_train, Num.personashogar = Nper)

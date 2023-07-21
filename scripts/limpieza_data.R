@@ -86,18 +86,19 @@ m_train <- rename(m_train, Tipodevivienda = P5090)
 m_test$PersonaxCuarto <-  m_test$Nper / m_test$P5010
 m_train$PersonaxCuarto <-  m_train$Nper / m_train$P5010
 
-##Variables relacionadas con educación y experiencia laboral
+##Variables relacionadas con educación y mercado laboral
 
 ##nivel educativo, se encuentra que el 4% de los datos refleja 
-##missing values. #DECIDIR QUE HACER CON ESTO
+##missing values. #DECIDIR QUE HACER CON ESTO o si dejamos esto en 
+##términos de años
 
 m_test <- m_test %>%
-  mutate(P5090 = factor(m_test$P6210, 
+  mutate(P6210 = factor(m_test$P6210, 
                         levels = c(1,2,3,4,5,6,9),
                         labels = c("Ninguno", "Preescolar", "Básica primaria", "Básica secundaria", "Media", "Universitaria", "No sabe, no informa")))
 
 m_train <- m_train %>%
-  mutate(P5090 = factor(m_train$P6210, 
+  mutate(P6210 = factor(m_train$P6210, 
                         levels = c(1,2,3,4,5,6,9),
                         labels = c("Ninguno", "Preescolar", "Básica primaria", "Básica secundaria", "Media", "Universitaria", "No sabe, no informa")))
 
@@ -105,9 +106,14 @@ m_test <- rename(m_test, Nivel_educativo = P6210)
 m_train <- rename(m_train, Nivel_educativo = P6210)
 
 ###Máximo grado alcanzado (expresado en número de años estudiados)
+##duda de si dejar esta
 
 m_test <- rename(m_test, Grado_edu = P6210s1)
 m_train <- rename(m_train, Grado_edu = P6210s1)
+
+
+###Cantidad de personas ocupadas en el hogar (proporcion)
+
 
 
 

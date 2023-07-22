@@ -88,7 +88,8 @@ m_train$PersonaxCuarto <-  m_train$Nper / m_train$P5010
 
 ##Variables relacionadas con educación y mercado laboral
 
-##nivel educativo, se encuentra que el 4% de los datos refleja 
+##nivel educativo como variable categorica.
+##se encuentra que el 4% de los datos refleja 
 ##missing values. #DECIDIR QUE HACER CON ESTO o si dejamos esto en 
 ##términos de años
 
@@ -105,16 +106,82 @@ m_train <- m_train %>%
 m_test <- rename(m_test, Nivel_educativo = P6210)
 m_train <- rename(m_train, Nivel_educativo = P6210)
 
-###Máximo grado alcanzado (expresado en número de años estudiados)
-##duda de si dejar esta
+
+##Expresamos la variable de educación en número de años estudiados
 
 m_test <- rename(m_test, Grado_edu = P6210s1)
 m_train <- rename(m_train, Grado_edu = P6210s1)
 
+##Antiguedad en el actual trabajo
+
+m_train <- rename(m_train, Antiguedad_trabajo = P6426)
+m_test <- rename(m_test, Antiguedad_trabajo = P6426)
+
+# Renombramos la variable categórica P6430 "Tipo de trabajo" a dicótoma
+
+m_train$P6430[m_train$Oc == 0] <- 0
+m_test$P6430[m_test$Oc == 0] <- 0
+
+m_test <- m_test %>%
+  mutate(P6430 = factor(P6430, 
+                        levels = c(0,1,2,3,4,5,6,7,8,9),
+                        labels = c("No trabaja",
+                                   "Empleado empresa particular",
+                                   "Empleado del Gobierno",
+                                   "Empleado doméstico",
+                                   "Cuenta propia",
+                                   "Empleador",
+                                   "Trabajador familiar sin remuneración",
+                                   "Trabajador sin remuneración en empresas",
+                                   "Jornalero o peón",
+                                   "Otro")))
+
+m_train <- m_train %>%
+  mutate(P6430 = factor(P6430, 
+                        levels = c(0,1,2,3,4,5,6,7,8,9),
+                        labels = c("No trabaja",
+                                   "Empleado empresa particular",
+                                   "Empleado del Gobierno",
+                                   "Empleado doméstico",
+                                   "Cuenta propia",
+                                   "Empleador",
+                                   "Trabajador familiar sin remuneración",
+                                   "Trabajador sin remuneración en empresas",
+                                   "Jornalero o peón",
+                                   "Otro")))
+
+
+m_train <- rename(m_train, Tipo_de_trabajo = P6430)
+m_test <- rename(m_test, Tipo_de_trabajo = P6430)
 
 ###Cantidad de personas ocupadas en el hogar (proporcion)
 
+m_test$Oc[is.na(m_test$Oc)] <- 0
+m_train$Oc[is.na(m_train$Oc)] <- 0
 
+m_test <- m_test %>%
+  group_by(id) %>%
+  mutate(Suma_ocupados = sum(Oc))
+m_test$Porcentaje_ocupados <-  m_test$Suma_ocupados / m_test$Nper
+
+m_train <- m_train %>%
+  group_by(id) %>%
+  mutate(Suma_ocupados = sum(Oc))
+m_train$Porcentaje_ocupados <-  m_train$Suma_ocupados / m_train$Nper
+
+# Creamos la nueva variable que suma los años para cada valor repetido de id
+m_test <- m_test %>%
+  group_by(id) %>%
+  mutate(suma_anos = sum(Grado_edu))
+m_test$Educación_promedio <-  m_test$suma_anos / m_test$Nper
+
+m_train <- m_train %>%
+  group_by(id) %>%
+  mutate(suma_anos = sum(Grado_edu))
+m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
+
+length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
+length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
 
 

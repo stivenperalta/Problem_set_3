@@ -122,16 +122,13 @@ logit1 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especif
                 data = hogares, 
                 method = "glm",
                 trControl = ctrl,
-                tuneGrid= expand.grid(alpha=,
-                                      lambda=)
-                family = "binomial")
+                tuneGrid= expand.grid(alpha=0,1,0.1, #estos los iremos cambiando
+                                      lambda=seq(0,1,0.1)), #estos los iremos cambiando
+                family = "binomial"
+                )
 
-
-          method = 'glmnet', 
-          trControl = fitControl,
-          tuneGrid = expand.grid(alpha =seq(0,1,0.1), #antes manteniamos esto en 0 para ridge o 1 para lasso, ahora lo tengo que expandir
-                                 lambda = seq(0.1,.2,0.01))
-) 
+#Adaptamos hiperparámetros en base a esto
+logit1$bestTune
 
 
 

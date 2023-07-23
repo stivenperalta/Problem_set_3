@@ -154,6 +154,44 @@ m_train <- m_train %>%
 m_train <- rename(m_train, Tipo_de_trabajo = P6430)
 m_test <- rename(m_test, Tipo_de_trabajo = P6430)
 
+#Ahora, vamos a crear una variable que muestra si el Jefe de hogar es mujer,  si sí = 1, de lo contrario
+#0
+
+m_test$Jefe_mujer <- ifelse(m_test$P6050 == 1 & m_test$P6020 == 2, 1, 0)
+m_train$Jefe_mujer <- ifelse(m_train$P6050 == 1 & m_train$P6020 == 2, 1, 0)
+
+
+m_test <- m_test %>%
+  mutate(Jefe_mujer = factor(m_test$Jefe_mujer, 
+                             levels = c(0,1),
+                             labels = c("Jefe de hogar no es mujer", "Jefe de hogar es mujer")))
+
+m_train <- m_train %>%
+  mutate(Jefe_mujer = factor(m_train$Jefe_mujer, 
+                             levels = c(0,1),
+                             labels = c("Jefe de hogar no es mujer", "Jefe de hogar es mujer")))
+
+# Para tener una proxy de salud, validamos regimen contributivo & subsidiado
+##Asignamos valores de 0 a respuestas de 2 y 9 cuyas respuestas son: no
+#está afiliado,no es cotizante o no es beneficiario de alguna entidad 
+#de seguridad social en salud y no sabe no responde, respectivamente.
+
+m_test$P6100[m_test$P6090 == 2 | m_test$P6090 == 9] <- 0
+m_train$P6100[m_train$P6090 == 2 | m_train$P6090 == 9] <- 0
+
+m_test$Regimen_salud <- ifelse(m_test$P6100 == 1 | m_test$P6100 == 2 , 1, 0)
+m_train$Regimen_salud <- ifelse(m_train$P6100 == 1 | m_train$P6100 == 2 , 1, 0)
+
+m_test <- m_test %>%
+  mutate(Regimen_salud = factor(m_test$Regimen_salud, 
+                                levels = c(0,1),
+                                labels = c("No Pertenece al régimen contributivo o especial", "Pertenece al régimen contributivo o especial")))
+
+m_train <- m_train %>%
+  mutate(Regimen_salud = factor(m_train$Regimen_salud, 
+                                levels = c(0,1),
+                                labels = c("No Pertenece al régimen contributivo o especial", "Pertenece al régimen contributivo o especial")))
+
 ###Cantidad de personas ocupadas en el hogar (proporcion)
 
 m_test$Oc[is.na(m_test$Oc)] <- 0
@@ -183,19 +221,10 @@ m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
+##Ahora vamos a crear una tasa de dependencia económica: 
 
 
 
 
 
 
-
-
-
-
-
-##renombramos la variable Nper correspondientes al número de 
-##personas por hogar
-
-m_test <- rename(m_test, Num.personashogar = Nper)
-m_train <- rename(m_train, Num.personashogar = Nper)

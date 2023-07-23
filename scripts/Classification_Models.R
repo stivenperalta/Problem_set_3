@@ -4,7 +4,7 @@
 
 rm(list = ls()) # Limpiar Rstudio
 
-pacman::p_load(ggplot2, tidyverse, caret) # Cargar paquetes requeridos
+pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr) # Cargar paquetes requeridos
 
 #Definir el directorio
 path_script<-rstudioapi::getActiveDocumentContext()$path
@@ -95,13 +95,16 @@ hogares <- hogares %>%
 
 table(hogares$pobre)
 
-#Mutación de factores
-hogares$pobre<-as.factor(hogares$pobre)
+#Mutación de factores (tenemos que hacerlo por niveles/levels)
+hogares$pobre <- factor(hogares$pobre, levels = c("0", "1"), labels = c("No", "Si"))
 hogares$Dominio<-as.factor(hogares$Dominio)
 
 #Saco Li y personas_gasto por alta correlación
 hogares <- hogares %>%
   select(-Li, -personas_gasto)
+
+#reemplazo NAs por 0s (solo para armar formulas)
+hogares <- replace(hogares, is.na(hogares), 0)
 
 # ESTIMAMOS PROBABILIDADES  -------------------------------------------------------------------
 
@@ -114,19 +117,26 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
 
 
 set.seed(2023)
-logit1 <- train(Default~duration+amount+installment+age+ #especifico mi formula, dejo afuera por ejemplo historia.terrible para evitar multicolinealidad
-                         history.buena+history.mala+
-                         purpose.auto_nuevo+purpose.auto_usado+purpose.bienes+purpose.educacion+
-                         foreign.extranjero+
-                         +rent.TRUE, 
-                       data = train, 
-                       method = "glm",
-                       trControl = ctrl,
-                       family = "binomial")
+logit1 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
+                arriendo_aprox+arriendo_real+Nper+Lp,
+                data = hogares, 
+                method = "glm",
+                trControl = ctrl,
+                tuneGrid= expand.grid(alpha=,
+                                      lambda=)
+                family = "binomial")
 
 
-mylogit_caret
+          method = 'glmnet', 
+          trControl = fitControl,
+          tuneGrid = expand.grid(alpha =seq(0,1,0.1), #antes manteniamos esto en 0 para ridge o 1 para lasso, ahora lo tengo que expandir
+                                 lambda = seq(0.1,.2,0.01))
+) 
 
+
+
+
+logit1
 
 predictTest_logit <- data.frame(
   obs = test$Default,                                    ## observed class labels

@@ -89,4 +89,25 @@ personas<-personas %>%
     ing_otra_fuente=P7510s7
   )
 
+#Creo una variable de pobreza en hogares para poder avanzar 
+hogares <- hogares %>%
+  mutate(pobre = rbinom(n(), 1, 0.5))
+
+table(hogares$pobre)
+
+#Mutación de factores
+hogares$pobre<-as.factor(hogares$pobre)
+
+
+# ESTIMAMOS PROBABILIDADES  -------------------------------------------------------------------
+
+#Logit
+logit1 <- glm(pobre~.-id -Clase -Fex_c -Fex_dpto -Depto), data = hogares, family = "binomial")
+
+# RECOBRAMOS PROBABILIDADES PREDICHAS -------------------------------------
+
+
+# CLASIFICACION -----------------------------------------------------------
+
+
 

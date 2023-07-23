@@ -97,12 +97,47 @@ table(hogares$pobre)
 
 #Mutación de factores
 hogares$pobre<-as.factor(hogares$pobre)
+hogares$Dominio<-as.factor(hogares$Dominio)
 
+#Saco Li y personas_gasto por alta correlación
+hogares <- hogares %>%
+  select(-Li, -personas_gasto)
 
 # ESTIMAMOS PROBABILIDADES  -------------------------------------------------------------------
 
 #Logit
-logit1 <- glm(pobre~.-id -Clase -Fex_c -Fex_dpto -Depto), data = hogares, family = "binomial")
+ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
+                    number = 10, #mejor 10. no sirve para dato espaciales
+                    classProbs = TRUE, #probabilidad de las clases en lugar de raw predicciones
+                    verbose=FALSE,
+                    savePredictions = T) #que guarde las predicciones
+
+
+set.seed(2023)
+logit1 <- train(Default~duration+amount+installment+age+ #especifico mi formula, dejo afuera por ejemplo historia.terrible para evitar multicolinealidad
+                         history.buena+history.mala+
+                         purpose.auto_nuevo+purpose.auto_usado+purpose.bienes+purpose.educacion+
+                         foreign.extranjero+
+                         +rent.TRUE, 
+                       data = train, 
+                       method = "glm",
+                       trControl = ctrl,
+                       family = "binomial")
+
+
+mylogit_caret
+
+
+predictTest_logit <- data.frame(
+  obs = test$Default,                                    ## observed class labels
+  predict(mylogit_caret, newdata = test, type = "prob"),         ## predicted class probabilities
+  pred = predict(mylogit_caret, newdata = test, type = "raw")    ## predicted class labels
+)
+
+
+head(predictTest_logit)
+
+
 
 # RECOBRAMOS PROBABILIDADES PREDICHAS -------------------------------------
 

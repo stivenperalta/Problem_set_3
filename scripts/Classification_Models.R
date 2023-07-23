@@ -4,7 +4,7 @@
 
 rm(list = ls()) # Limpiar Rstudio
 
-pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet) # Cargar paquetes requeridos
+pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet, pROC) # Cargar paquetes requeridos
 
 #Definir el directorio
 path_script<-rstudioapi::getActiveDocumentContext()$path
@@ -139,22 +139,21 @@ logit1$bestTune
 
 logit1
 
-#predictions
+#predictions (probar ambas)
 predictTest_logit <- data.frame(
   obs = hogares$pobre,                    ## observed class labels
   predict(logit1, type = "prob"),         ## predicted class probabilities
   pred = predict(logit1, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
 
-
-predictSample <- train   %>% 
-  mutate(hat_default = predict(class_ranger, newdata = train, type = "raw")    ## predicted class labels
-  )  %>% select(Default,hat_default)
-
-
-
+predictTest_logit2<- predictTest_logit2 %>%
+  mutate(class_ROC= predict(logit1, newdata=hogares,type="raw"),
+         p_hat_ROC= predict(logit1, newdata=hogares, type="prob")$Si,
+         Default_num=ifelse(Defaulta=="No",0,1)
+         )
 
 head(predictTest_logit)
+head(predictTest_logit2)
 
 confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
 

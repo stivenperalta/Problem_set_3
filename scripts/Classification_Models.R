@@ -126,8 +126,9 @@ colnames(hyperparameter_grid) <- c("alpha", "lambda")
 
 logit1 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
                 arriendo_aprox+arriendo_real+Nper+Lp,
-                data = hogares, 
-                method = "glm",
+                data = hogares,
+                metric="Accuracy",
+                method = "glmnet",
                 trControl = ctrl,
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"
@@ -142,12 +143,22 @@ logit1
 predictTest_logit <- data.frame(
   obs = hogares$pobre,                    ## observed class labels
   predict(logit1, type = "prob"),         ## predicted class probabilities
-  pred = predict(mylogit_caret, newdata = test, type = "raw")    ## predicted class labels
+  pred = predict(logit1, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
+
+
+predictSample <- train   %>% 
+  mutate(hat_default = predict(class_ranger, newdata = train, type = "raw")    ## predicted class labels
+  )  %>% select(Default,hat_default)
+
+
 
 
 head(predictTest_logit)
 
+confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
+
+#ROC
 
 
 # RECOBRAMOS PROBABILIDADES PREDICHAS -------------------------------------

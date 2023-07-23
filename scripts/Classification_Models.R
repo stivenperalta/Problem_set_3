@@ -4,7 +4,7 @@
 
 rm(list = ls()) # Limpiar Rstudio
 
-pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr) # Cargar paquetes requeridos
+pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet) # Cargar paquetes requeridos
 
 #Definir el directorio
 path_script<-rstudioapi::getActiveDocumentContext()$path
@@ -117,27 +117,31 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
 
 
 set.seed(2023)
+
+#hacemos la grilla para los hiperparámetros
+hyperparameter_grid <- expand.grid(alpha = seq(0, 1, 0.1), # iremos variando los valores
+                                   lambda = seq(0, 1, 0.1)) # iremos variando los valores
+
+colnames(hyperparameter_grid) <- c("alpha", "lambda")
+
 logit1 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
                 arriendo_aprox+arriendo_real+Nper+Lp,
                 data = hogares, 
                 method = "glm",
                 trControl = ctrl,
-                tuneGrid= expand.grid(alpha=0,1,0.1, #estos los iremos cambiando
-                                      lambda=seq(0,1,0.1)), #estos los iremos cambiando
-                family = "binomial"
-                )
+                tuneGrid = hyperparameter_grid,
+                family= "binomial"
+)
 
 #Adaptamos hiperparámetros en base a esto
 logit1$bestTune
 
-
-
-
 logit1
 
+#predictions
 predictTest_logit <- data.frame(
-  obs = test$Default,                                    ## observed class labels
-  predict(mylogit_caret, newdata = test, type = "prob"),         ## predicted class probabilities
+  obs = hogares$pobre,                    ## observed class labels
+  predict(logit1, type = "prob"),         ## predicted class probabilities
   pred = predict(mylogit_caret, newdata = test, type = "raw")    ## predicted class labels
 )
 

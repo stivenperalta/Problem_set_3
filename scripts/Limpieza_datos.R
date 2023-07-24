@@ -23,6 +23,7 @@ test_persona <- readRDS("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3
 train_persona <- readRDS("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3/stores/train_persona.rds")
 sample_sub <- read_csv("GitHub/Problem_set_3/stores/sample_submission.csv")
 
+
 # Unimos la base de datos de personas y hogares con merge usando el id del hogar
 m_test <- merge(test_hogar, test_persona, by = "id")
 m_train <- merge(train_hogar, train_persona, by = "id")
@@ -35,7 +36,7 @@ length(unique(m_test$id))
 length(unique(m_train$id))
 
 ##Una vez se han unido el los datos a nivel de persona a hogar-------------------------------------------------------
-#Procedemos con la creación de variables
+#Procedemos con la creación y eliminación de variables
 
 ##Para empezar, empezamos por la variable de si vive en cabecera o en 
 ##zona urbana: convertir variable "Clase" del dataset original
@@ -191,6 +192,8 @@ m_train <- m_train %>%
   mutate(Regimen_salud = factor(m_train$Regimen_salud, 
                                 levels = c(0,1),
                                 labels = c("No Pertenece al régimen contributivo o especial", "Pertenece al régimen contributivo o especial")))
+
+
 ###Cantidad de personas ocupadas en el hogar (proporcion)
 
 m_test$Oc[is.na(m_test$Oc)] <- 0
@@ -219,4 +222,24 @@ m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 
 length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
+
+##Renomabramos variables
+
+m_train <- rename(m_train, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c.y= Fex_c.y,
+                  depto= Depto.y, fex_dpto=Fex_dpto.y,cuartos_hog= P5000, cuartos_dorm= P5010, arr_hip= P5130,
+                  arriendo= P5140, nper=Nper, npersug= Npersug,sexo = P6020, edad = P6040, cotizante= P6090, seg_soc= P6100, 
+                  ing_hor_ext= P6510, prima= P6545, bonif= P6580, sub_trans= P6585s2,
+                  subsid_fam= P6585s3, subsid_educ= P6585s4, alim_trab = P6590, viv_pag_trab = P6600,
+                  ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_seg_sem= P7045, 
+                  din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920)
+
+m_test <- rename(m_test, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c.x= Fex_c.x,
+                 depto= Depto.x, fex_dpto=Fex_dpto.x,cuartos_hog= P5000, cuartos_dorm= P5010, arr_hip= P5130,
+                 arriendo= P5140, nper=Nper, npersug= Npersug,sexo = P6020, edad = P6040, cotizante= P6090, seg_soc= P6100, 
+                 ing_hor_ext= P6510, prima= P6545, bonif= P6580, sub_trans= P6585s2,
+                 subsid_fam= P6585s3, subsid_educ= P6585s4, alim_trab = P6590, viv_pag_trab = P6600,
+                 ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_seg_sem= P7045, 
+                 din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920)
+
+
 

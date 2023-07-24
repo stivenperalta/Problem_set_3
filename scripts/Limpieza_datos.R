@@ -191,7 +191,6 @@ m_train <- m_train %>%
   mutate(Regimen_salud = factor(m_train$Regimen_salud, 
                                 levels = c(0,1),
                                 labels = c("No Pertenece al régimen contributivo o especial", "Pertenece al régimen contributivo o especial")))
-
 ###Cantidad de personas ocupadas en el hogar (proporcion)
 
 m_test$Oc[is.na(m_test$Oc)] <- 0
@@ -220,3 +219,4 @@ m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 
 length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
+

@@ -122,7 +122,13 @@ set.seed(2023)
 hyperparameter_grid <- expand.grid(alpha = seq(0, 1, 0.1), # iremos variando los valores
                                    lambda = seq(0, 1, 0.1)) # iremos variando los valores
 
+hyperparameter_grid2 <- expand.grid(alpha = seq(0, 1, 0.1), # iremos variando los valores
+                                   lambda = seq(0, 1, 0.1),
+                                   splitrule="gini") # iremos variando los valores
+
+
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
+colnames(hyperparameter_grid2) <- c("alpha","lambda","gini")
 
 logit1 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
                 arriendo_aprox+arriendo_real+Nper+Lp,
@@ -133,6 +139,17 @@ logit1 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especif
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"
 )
+
+logit2 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
+                  arriendo_aprox+arriendo_real+Nper+Lp,
+                data = hogares,
+                metric="ROC",
+                method = "glmnet",
+                trControl = ctrl,
+                tuneGrid = hyperparameter_grid2,
+                family= "binomial"
+)
+
 
 #Adaptamos hiperparámetros en base a esto
 logit1$bestTune

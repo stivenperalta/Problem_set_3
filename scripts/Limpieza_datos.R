@@ -220,6 +220,15 @@ m_train <- m_train %>%
   mutate(suma_anos = sum(Grado_edu))
 m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 
+#####Agregamos la variable Ingpcug a test_hogares #####
+
+m_test <- m_test %>%
+  mutate(Ingpcug = "")
+
+m_test <- m_test %>%
+  mutate(Pobre = "")
+
+
 ##Renomabramos variables
 
 m_train <- rename(m_train, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c= Fex_c.y,
@@ -249,13 +258,12 @@ m_test <- rename(m_test, Jefe_hogar = P6050)
 m_train <- m_train %>% filter(Jefe_hogar == 1)
 m_test <- m_test %>% filter(Jefe_hogar == 1)
 
-
 ##Seleccionamos únicamente las variables de interes para cada set de datos
-train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","V.cabecera","cuartos_hog","cuartos_dorm",
+train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera","cuartos_hog","cuartos_dorm",
                                          "arr_hip", "nper","npersug","IngresoPerCapita",
-                                         "Li", "Lp", "Fex_c.x","Depto.x","Fex_dpto.x",            
+                                         "Li", "Lp", "Fex_c","Depto","Fex_dpto",            
                                          "Pobre", "arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
-                                         "Tipo_vivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
+                                         "Tipodevivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
                                          "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
@@ -264,6 +272,21 @@ train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","V.cabecera"
                                          "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
                                          "pagos_arr_pen","din_otr_per","pet"))
                                           
+##Seleccionamos únicamente las variables de interes para cada set de datos
+test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","cuartos_hog","cuartos_dorm",
+                                         "arr_hip", "nper","npersug","IngresoPerCapita",
+                                         "Li", "Lp", "Fex_c","Depto","Fex_dpto",            
+                                         "Pobre", "arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
+                                         "Tipodevivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
+                                         "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
+                                         "Antiguedad_trabajo" , "Tipo_de_trabajo", 
+                                         "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
+                                         "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
+                                         "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
+                                         "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
+                                         "pagos_arr_pen","din_otr_per","pet"))
+
+
 
 
 

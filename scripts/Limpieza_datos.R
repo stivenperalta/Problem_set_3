@@ -90,9 +90,6 @@ m_train$PersonaxCuarto <-  m_train$Nper / m_train$P5010
 ##Variables relacionadas con educación y mercado laboral
 
 ##nivel educativo como variable categorica.
-##se encuentra que el 4% de los datos refleja 
-##missing values. #DECIDIR QUE HACER CON ESTO o si dejamos esto en 
-##términos de años
 
 m_test <- m_test %>%
   mutate(P6210 = factor(m_test$P6210, 
@@ -220,13 +217,14 @@ m_train <- m_train %>%
   mutate(suma_anos = sum(Grado_edu))
 m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 
-#####Agregamos la variable Ingpcug a test_hogares #####
+#####Agregamos la variable Ingpcug y pobre a test_hogares
+##son las variables que vamos a predecir#####
 
 m_test <- m_test %>%
-  mutate(Ingpcug = "")
+  mutate(Ingpcug = ".")
 
 m_test <- m_test %>%
-  mutate(Pobre = "")
+  mutate(Pobre = ".")
 
 
 ##Renomabramos variables
@@ -258,11 +256,15 @@ m_test <- rename(m_test, Jefe_hogar = P6050)
 m_train <- m_train %>% filter(Jefe_hogar == 1)
 m_test <- m_test %>% filter(Jefe_hogar == 1)
 
+##Sumamos variable arriendos:
+
+m_test$arriendot <- m_test$arr_hip + m_test$arriendo
+m_train$arriendot <-m_train$arr_hip + m_test$arriendo
+
 ##Seleccionamos únicamente las variables de interes para cada set de datos
 train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera","cuartos_hog","cuartos_dorm",
-                                         "arr_hip", "nper","npersug","IngresoPerCapita",
-                                         "Li", "Lp", "Fex_c","Depto","Fex_dpto",            
-                                         "Pobre", "arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
+                                          "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
+                                           "arriendot","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
                                          "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
@@ -270,13 +272,13 @@ train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera"
                                          "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
                                          "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
-                                         "pagos_arr_pen","din_otr_per","pet"))
+                                         "pagos_arr_pen","din_otr_per","pet", "Pobre","IngresoPerCapita"))
                                           
 ##Seleccionamos únicamente las variables de interes para cada set de datos
+##Seleccionamos únicamente las variables de interes para cada set de datos
 test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","cuartos_hog","cuartos_dorm",
-                                         "arr_hip", "nper","npersug","IngresoPerCapita",
-                                         "Li", "Lp", "Fex_c","Depto","Fex_dpto",            
-                                         "Pobre", "arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
+                                         "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
+                                         "arriendot","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
                                          "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
@@ -284,9 +286,44 @@ test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","
                                          "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
                                          "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
-                                         "pagos_arr_pen","din_otr_per","pet"))
+                                         "pagos_arr_pen","din_otr_per","pet", "Pobre","IngresoPerCapita"))
+
+length(unique(test_final$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
+length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
 
+# Identificamos los NA para las bases de datos
+missing_countrain <- colSums(is.na(train_final))
+print(missing_countrain) #s
 
+missing_counttest <- colSums(is.na(train_final))
+print(missing_counttest) #s
+
+###Empezamos con la imputación de datos
+
+train_final<- train_final %>%
+  mutate(
+    ocupado = ifelse(is.na(ocupado), "0", "1"),
+    desocupado = ifelse(is.na(desocupado), "0", "1"),
+    inactivo = ifelse(is.na(inactivo), "0", "1"),
+  )
+
+train_final  <- train_final %>%
+  mutate(tiempo_empresa = ifelse(is.na(tiempo_empresa) & ocupado == "0", "0", tiempo_empresa)) %>%
+  mutate(ing_hor_ext = ifelse(is.na(ing_hor_ext) & ocupado == "0", "2", ing_hor_ext)) %>%
+  mutate(prima = ifelse(is.na(prima) & ocupado == "0", "2", prima)) %>%
+  mutate(bonif = ifelse(is.na(bonif) & ocupado == "0", "2", bonif)) %>%
+  mutate(sub_trans = ifelse(is.na(sub_trans) & ocupado == "0", "2", sub_trans)) %>%
+  mutate(subsid_fam = ifelse(is.na(subsid_fam) & ocupado == "0", "2", subsid_fam)) %>%
+  mutate(subsid_educ = ifelse(is.na(subsid_educ) & ocupado == "0", "2", subsid_educ)) %>%
+  mutate(alim_trab = ifelse(is.na(alim_trab) & ocupado == "0", "2", alim_trab)) %>%
+  mutate(viv_pag_trab = ifelse(is.na(viv_pag_trab) & ocupado == "0", "2", viv_pag_trab)) %>%
+  mutate(tr_empr = ifelse(is.na(tr_empr) & ocupado == "0", "2", tr_empr)) %>%
+  mutate(ing_esp = ifelse(is.na(ing_esp) & ocupado == "0", "2", ing_esp)) %>%
+  mutate(hor_trab_sem = ifelse(is.na(hor_trab_sem) & ocupado == "0", "0", hor_trab_sem)) %>%
+  mutate(otro_trab = ifelse(is.na(otro_trab) & ocupado == "0", "2", otro_trab)) %>%
+  mutate(hor_trab_seg_sem = ifelse(is.na(hor_trab_seg_sem) & ocupado == "0", "0", hor_trab_seg_sem)) %>%
+  mutate(deseo_hor = ifelse(is.na(deseo_hor) & ocupado == "0", "2", deseo_hor)) %>%
+  mutate(ingr_trab_d = ifelse(is.na(ingr_trab_d) & desocupado == "0" & inactivo == "0", "2", ingr_trab_d))
 
 

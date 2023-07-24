@@ -221,7 +221,7 @@ m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
-##Ahora vamos a crear una tasa de dependencia económica: 
+
 
 
 

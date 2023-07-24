@@ -295,10 +295,10 @@ train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera"
                                           "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
                                          "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educacion_promedio",
-                                         "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
+                                         "sexo", "edad","seg_soc", "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
-                                         "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
+                                         "subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
                                          "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
                                          "pagos_arr_pen","din_otr_per","pet","ocupado", 
@@ -310,10 +310,10 @@ test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","
                                          "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
                                        "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educacion_promedio",
-                                         "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
+                                         "sexo", "edad","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
-                                         "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
+                                         "subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
                                          "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
                                          "pagos_arr_pen","din_otr_per","pet","ocupado",
@@ -360,7 +360,7 @@ train_final$otro_trab <- ifelse(is.na(train_final$otro_trab) & train_final$ocupa
 train_final$hor_trab_seg_sem <- ifelse(is.na(train_final$hor_trab_seg_sem) & train_final$ocupado == "0", "0", train_final$hor_trab_seg_sem)
 train_final$deseo_hor <- ifelse(is.na(train_final$deseo_hor) & train_final$ocupado == "0", "2", train_final$deseo_hor)
 train_final$ingr_trab_d <- ifelse(is.na(train_final$ingr_trab_d) & train_final$desocupado == "0" & train_final$inactivo == "0", "2", train_final$ingr_trab_d)
-                        
+train_final$bonif_anual <- ifelse(is.na(train_final$bonif_anual) & train_final$desocupado == "0" & train_final$inactivo == "0", "2", train_final$bonif_anual)                        
 #Ahora en test
 
 test_final$Antiguedad_trabajo <- ifelse(is.na(test_final$Antiguedad_trabajo) & test_final$ocupado == "0", "0", test_final$Antiguedad_trabajo)
@@ -378,6 +378,7 @@ test_final$otro_trab <- ifelse(is.na(test_final$otro_trab) & test_final$ocupado 
 test_final$hor_trab_seg_sem <- ifelse(is.na(test_final$hor_trab_seg_sem) & test_final$ocupado == "0", "0", test_final$hor_trab_seg_sem)
 test_final$deseo_hor <- ifelse(is.na(test_final$deseo_hor) & test_final$ocupado == "0", "2", test_final$deseo_hor)
 test_final$ingr_trab_d <- ifelse(is.na(test_final$ingr_trab_d) & test_final$desocupado == "0" & test_final$inactivo == "0", "2", test_final$ingr_trab_d)
+test_final$bonif_anual <- ifelse(is.na(train_final$test_anual) & test_final$desocupado == "0" & test_final$inactivo == "0", "2", test_final$bonif_anual)                        
 
 
 names(test_final)
@@ -390,3 +391,47 @@ media_educ <- mean(train_final$Educacion_promedio, na.rm = TRUE)
 train_final$Educacion_promedio <- ifelse(is.na(train_final$Educacion_promedio), "0", train_final$Educacion_promedio)
 test_final$Educacion_promedio <- ifelse(is.na(test_final$Educacion_promedio), "0", test_final$Educacion_promedio)
 
+##Para la variable "tipo de trabajo" hacemos imputación de "otro"
+##pues el jefe del hogar contestó que está desocupado e inactivo y
+##adicionalmente reporta 0 en antiguedad laboral
+
+train_final$Tipo_de_trabajo <- ifelse(is.na(train_final$Tipo_de_trabajo) & train_final$ocupado == "0" & train_final$Antiguedad_trabajo == "0", "9", train_final$Tipo_de_trabajo)
+test_final$Tipo_de_trabajo <- ifelse(is.na(test_final$Tipo_de_trabajo) & test_final$ocupado == "0" & test_final$Antiguedad_trabajo == "0", "9", test_final$Tipo_de_trabajo)
+
+### Las variables relacionadas con ingreso que son categóricas, aun siguen
+### teniendo missing 
+
+var_imput <- train_final %>%
+  select(ing_hor_ext, prima, bonif, sub_trans, subsid_fam, subsid_educ, alim_trab,
+         viv_pag_trab, ing_esp, fondo_pensiones, ingr_trab_d) %>%
+  unlist()
+
+# Loop through each categorical variable
+for (var in var_imput) {
+  # Get the frequency table of the current categorical variable
+  freq_table <- table(train_final[[var]])
+  
+  # Get the observed proportions of each category
+  proportions <- prop.table(freq_table)
+  
+  # Find the missing values in the current categorical variable
+  missing_values <- is.na(train_final[[var]])
+  
+  # Generate random indices for the missing values based on the observed proportions
+  imputed_values <- sample(names(proportions), size = sum(missing_values), replace = TRUE, prob = proportions)
+  
+  # Assign the imputed values to the missing values in the current categorical variable
+  train_final[[var]][missing_values] <- imputed_values
+}
+
+# Imputación de valores a otras variables con k Nearest Neighbors (kNN) ########
+
+# Evalúo variables con missing values para imputar
+
+missing_valuesTrain <- colSums(is.na(train_final)) #sumo los NA's para cada variable
+missing_table <- data.frame(Variable = names(missing_valuesTrain), Missing_Values = missing_valuesTrain) # lo reflejo en un data.frame
+missing_table
+
+# Creo método de imputación con el paquete mice para imputar las variables rooms Y bathrooms
+install.packages("mice")
+library(mice)

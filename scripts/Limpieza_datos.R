@@ -256,16 +256,38 @@ m_test <- rename(m_test, Jefe_hogar = P6050)
 m_train <- m_train %>% filter(Jefe_hogar == 1)
 m_test <- m_test %>% filter(Jefe_hogar == 1)
 
-##Sumamos variable arriendos:
+##Sumamos variable arriendos,para ellos se cambian
+#los valores NA de arriendo y arr_hip por 0 para poder sumarlos ###
 
-m_test$arriendot <- m_test$arr_hip + m_test$arriendo
-m_train$arriendot <-m_train$arr_hip + m_test$arriendo
+m_test<- m_test %>%
+  mutate(arr_hip = ifelse(is.na(arr_hip), 0, arr_hip),
+         arriendo = ifelse(is.na(arriendo), 0, arriendo))
+
+m_train<- m_train %>%
+  mutate(arr_hip = ifelse(is.na(arr_hip), 0, arr_hip),
+         arriendo = ifelse(is.na(arriendo), 0, arriendo))
+
+### Creamos una dummy de si el hogar paga arriendo o no ###
+
+m_train <- m_train %>%
+  mutate(d_arriendo = ifelse(arriendo > 0, "1", "0"))
+
+m_test <- m_test %>%
+  mutate(d_arriendo = ifelse(arriendo > 0, "1", "0"))
+
+m_train <- m_train %>%
+  mutate(arriendo= arr_hip + arriendo)
+
+m_test <- m_test %>%
+  mutate(arriendo= arr_hip + arriendo)
+
+
 
 ##Seleccionamos únicamente las variables de interes para cada set de datos
 train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera","cuartos_hog","cuartos_dorm",
                                           "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
-                                           "arriendot","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
-                                         "Tipodevivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
+                                         "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
+                                         "Tipodevivienda","Regimen_salud","Educación_promedio",
                                          "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
@@ -278,15 +300,15 @@ train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera"
 ##Seleccionamos únicamente las variables de interes para cada set de datos
 test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","cuartos_hog","cuartos_dorm",
                                          "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
-                                         "arriendot","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
-                                         "Tipodevivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
+                                       "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
+                                         "Tipodevivienda","Regimen_salud","Educación_promedio",
                                          "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
                                          "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
                                          "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
-                                         "pagos_arr_pen","din_otr_per","pet", "Pobre","IngresoPerCapita"))
+                                         "pagos_arr_pen","din_otr_per","pet","Pobre","IngresoPerCapita"))
 
 length(unique(test_final$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
@@ -296,11 +318,12 @@ length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hog
 missing_countrain <- colSums(is.na(train_final))
 print(missing_countrain) #s
 
-missing_counttest <- colSums(is.na(train_final))
+missing_counttest <- colSums(is.na(test_final))
 print(missing_counttest) #s
 
 ###Empezamos con la imputación de datos
 
+###Aquí quede
 train_final<- train_final %>%
   mutate(
     ocupado = ifelse(is.na(ocupado), "0", "1"),

@@ -220,26 +220,50 @@ m_train <- m_train %>%
   mutate(suma_anos = sum(Grado_edu))
 m_train$Educación_promedio <-  m_train$suma_anos / m_train$Nper
 
-length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
-length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
-
 ##Renomabramos variables
 
-m_train <- rename(m_train, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c.y= Fex_c.y,
+m_train <- rename(m_train, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c= Fex_c.y,
                   depto= Depto.y, fex_dpto=Fex_dpto.y,cuartos_hog= P5000, cuartos_dorm= P5010, arr_hip= P5130,
                   arriendo= P5140, nper=Nper, npersug= Npersug,sexo = P6020, edad = P6040, cotizante= P6090, seg_soc= P6100, 
                   ing_hor_ext= P6510, prima= P6545, bonif= P6580, sub_trans= P6585s2,
                   subsid_fam= P6585s3, subsid_educ= P6585s4, alim_trab = P6590, viv_pag_trab = P6600,
                   ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_seg_sem= P7045, 
-                  din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920)
+                  din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920,IngresoPerCapita = Ingpcug)
 
-m_test <- rename(m_test, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c.x= Fex_c.x,
+m_test <- rename(m_test, pet= Pet, ocupado= Oc, desocupado= Des, inactivo= Ina, fex_c= Fex_c.x,
                  depto= Depto.x, fex_dpto=Fex_dpto.x,cuartos_hog= P5000, cuartos_dorm= P5010, arr_hip= P5130,
                  arriendo= P5140, nper=Nper, npersug= Npersug,sexo = P6020, edad = P6040, cotizante= P6090, seg_soc= P6100, 
                  ing_hor_ext= P6510, prima= P6545, bonif= P6580, sub_trans= P6585s2,
                  subsid_fam= P6585s3, subsid_educ= P6585s4, alim_trab = P6590, viv_pag_trab = P6600,
                  ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_seg_sem= P7045, 
-                 din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920)
+                 din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920,IngresoPerCapita = Ingpcug)
+
+length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
+length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
+
+## Ya tenemos todas las variables, las operaciones que provienen de personas las asignamos para todo el hogar, 
+##especificamente para el Jefe de Hogar, por lo tanto, procedemos a generar las data por hogar nuevamente.
+
+m_train <- rename(m_train, Jefe_hogar = P6050)
+m_test <- rename(m_test, Jefe_hogar = P6050)
+m_train <- m_train %>% filter(Jefe_hogar == 1)
+m_test <- m_test %>% filter(Jefe_hogar == 1)
+
+
+##Seleccionamos únicamente las variables de interes para cada set de datos
+train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","V.cabecera","cuartos_hog","cuartos_dorm",
+                                         "arr_hip", "nper","npersug","IngresoPerCapita",
+                                         "Li", "Lp", "Fex_c.x","Depto.x","Fex_dpto.x",            
+                                         "Pobre", "arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
+                                         "Tipo_vivienda","Regimen_salud","Educación_promedio","Antiguedad_trabajo",
+                                         "sexo", "edad","Jefe_hogar","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
+                                         "Antiguedad_trabajo" , "Tipo_de_trabajo", 
+                                         "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
+                                         "subsid_educ","subsid_educ","alim_trab","viv_pag_trab",
+                                         "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
+                                         "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
+                                         "pagos_arr_pen","din_otr_per","pet"))
+                                          
 
 
 

@@ -192,7 +192,7 @@ m_train <- m_train %>%
 
 
 ###Cantidad de personas ocupadas en el hogar (proporcion)
-###Primero reemplazamos los valores de NA por O
+###Primero reemplazamos los valores de NA en ocupados por O
 
 m_test$Oc[is.na(m_test$Oc)] <- 0
 m_train$Oc[is.na(m_train$Oc)] <- 0
@@ -214,6 +214,8 @@ m_train <- m_train %>%
 m_train$Porcentaje_ocupados <-  m_train$Suma_ocupados / m_train$Nper
 
 # Creamos la nueva variable que suma los años para cada valor repetido de id
+###para sacar eeducación promedio por hogar
+
 m_test <- m_test %>%
   group_by(id) %>%
   mutate(suma_anos = sum(Grado_edu))
@@ -379,3 +381,12 @@ test_final$ingr_trab_d <- ifelse(is.na(test_final$ingr_trab_d) & test_final$deso
 
 
 names(test_final)
+
+##Primero imputamos los NA con la media del grado de educación para
+##sacar el promedio de educación por el hogar
+train_final$Educacion_promedio <- as.numeric(train_final$Educacion_promedio )
+test_final$Educacion_promedio <- as.numeric(test_final$Educacion_promedio )
+media_educ <- mean(train_final$Educacion_promedio, na.rm = TRUE)
+train_final$Educacion_promedio <- ifelse(is.na(train_final$Educacion_promedio), "0", train_final$Educacion_promedio)
+test_final$Educacion_promedio <- ifelse(is.na(test_final$Educacion_promedio), "0", test_final$Educacion_promedio)
+

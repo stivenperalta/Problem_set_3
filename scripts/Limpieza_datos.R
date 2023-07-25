@@ -107,8 +107,24 @@ m_train <- rename(m_train, Nivel_educativo = P6210)
 
 ##Expresamos la variable de educación en número de años estudiados
 
-m_test <- rename(m_test, Grado_edu = P6210s1)
-m_train <- rename(m_train, Grado_edu = P6210s1)
+# Variable años de educación en función de max grado alcanzado
+
+m_test$P6210[is.na(m_test$P6210)] <- 0 # los NA en teoría corresponden a personas que no reportan grado, los ajustamos a cero.
+m_train$P6210[is.na(m_train$P6210)] <- 0
+
+
+m_train$Añoseduc <- ifelse(m_train$P6210 == 3, 5, 
+                           ifelse(m_train$P6210  == 4, 9, 
+                                  ifelse(m_train$P6210  == 5, 11, 
+                                         ifelse(m_train$P6210  == 6, 16, 
+                                                ifelse(m_train$P6210  == 9, 0, 0)))))
+
+m_test$Añoseduc <- ifelse(m_test$P6210 == 3, 5, 
+                          ifelse(m_test$P6210  == 4, 9, 
+                                 ifelse(m_test$P6210  == 5, 11, 
+                                        ifelse(m_test$P6210  == 6, 16, 
+                                               ifelse(m_test$P6210  == 9, 0, 0)))))
+
 
 ##Antiguedad en el actual trabajo
 
@@ -213,6 +229,7 @@ m_train <- m_train %>%
   mutate(Suma_ocupados = sum(Oc))
 m_train$Porcentaje_ocupados <-  m_train$Suma_ocupados / m_train$Nper
 
+
 # Creamos la nueva variable que suma los años para cada valor repetido de id
 ###para sacar eeducación promedio por hogar
 
@@ -243,7 +260,7 @@ m_train <- rename(m_train, pet= Pet, ocupado= Oc2, desocupado= Des, inactivo= In
                   arriendo= P5140, nper=Nper, npersug= Npersug,sexo = P6020, edad = P6040, cotizante= P6090, seg_soc= P6100, 
                   ing_hor_ext= P6510, prima= P6545, bonif= P6580, sub_trans= P6585s2,
                   subsid_fam= P6585s3, subsid_educ= P6585s4, alim_trab = P6590, viv_pag_trab = P6600,
-                  ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_seg_sem= P7045, 
+                  ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_sem= P6800,hor_trab_seg_sem= P7045, 
                   din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920,IngresoPerCapita = Ingpcug)
 
 m_test <- rename(m_test, pet= Pet, ocupado= Oc2, desocupado= Des, inactivo= Ina, fex_c= Fex_c.x,
@@ -251,7 +268,7 @@ m_test <- rename(m_test, pet= Pet, ocupado= Oc2, desocupado= Des, inactivo= Ina,
                  arriendo= P5140, nper=Nper, npersug= Npersug,sexo = P6020, edad = P6040, cotizante= P6090, seg_soc= P6100, 
                  ing_hor_ext= P6510, prima= P6545, bonif= P6580, sub_trans= P6585s2,
                  subsid_fam= P6585s3, subsid_educ= P6585s4, alim_trab = P6590, viv_pag_trab = P6600,
-                 ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_seg_sem= P7045, 
+                 ing_esp= P6620, bonif_anual= P6630s6, otro_trab= P7040,deseo_hor= P7090,hor_trab_sem= P6800,hor_trab_seg_sem= P7045, 
                  din_otr_per= P7505,ingr_trab_d= P7472,pagos_arr_pen= P7495,fondo_pensiones= P6920,IngresoPerCapita = Ingpcug)
 
 length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
@@ -295,12 +312,12 @@ train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera"
                                           "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
                                          "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educacion_promedio",
-                                         "sexo", "edad","seg_soc", "Nivel_educativo", "Grado_edu" ,                        
+                                         "sexo", "edad","seg_soc", "Nivel_educativo", "Añoseduc" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
                                          "subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
-                                         "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
+                                         "hor_trab_sem","deseo_hor","ingr_trab_d",
                                          "pagos_arr_pen","din_otr_per","pet","ocupado", 
                                          "desocupado", "inactivo","Pobre","IngresoPerCapita"))
                                           
@@ -310,14 +327,14 @@ test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","
                                          "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
                                        "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educacion_promedio",
-                                         "sexo", "edad","seg_soc",  "Nivel_educativo", "Grado_edu" ,                        
+                                         "sexo", "edad","seg_soc",  "Nivel_educativo", "Añoseduc" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
                                          "subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
-                                         "hor_trab_seg_sem","deseo_hor","ingr_trab_d",
+                                         "hor_trab_sem","deseo_hor","ingr_trab_d",
                                          "pagos_arr_pen","din_otr_per","pet","ocupado",
-                                       "desocupado", "inactivo","Pobre","IngresoPerCapita"))
+                                       "desocupado", "inactivo","per","Pobre","IngresoPerCapita"))
 
 length(unique(test_final$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
@@ -355,12 +372,12 @@ train_final$subsid_educ <- ifelse(is.na(train_final$subsid_educ) & train_final$o
 train_final$alim_trab <- ifelse(is.na(train_final$alim_trab) & train_final$ocupado == "0", "2", train_final$alim_trab) 
 train_final$viv_pag_trab <- ifelse(is.na(train_final$viv_pag_trab) & train_final$ocupado == "0", "2", train_final$viv_pag_trab) 
 train_final$ing_esp <- ifelse(is.na(train_final$ing_esp) & train_final$ocupado == "0", "2", train_final$ing_esp) 
-train_final$hor_trab_sem <- ifelse(is.na(train_final$hor_trab_sem) & train_final$ocupado == "0", "0", train_final$hor_trab_sem) 
 train_final$otro_trab <- ifelse(is.na(train_final$otro_trab) & train_final$ocupado == "0", "2", train_final$otro_trab) 
-train_final$hor_trab_seg_sem <- ifelse(is.na(train_final$hor_trab_seg_sem) & train_final$ocupado == "0", "0", train_final$hor_trab_seg_sem)
+train_final$hor_trab_sem <- ifelse(is.na(train_final$hor_trab_sem) & train_final$ocupado == "0", "0", train_final$hor_trab_sem)
 train_final$deseo_hor <- ifelse(is.na(train_final$deseo_hor) & train_final$ocupado == "0", "2", train_final$deseo_hor)
-train_final$ingr_trab_d <- ifelse(is.na(train_final$ingr_trab_d) & train_final$desocupado == "0" & train_final$inactivo == "0", "2", train_final$ingr_trab_d)
-train_final$bonif_anual <- ifelse(is.na(train_final$bonif_anual) & train_final$desocupado == "0" & train_final$inactivo == "0", "2", train_final$bonif_anual)                        
+train_final$ingr_trab_d <- ifelse(is.na(train_final$ingr_trab_d) & train_final$ocupado == "0" & train_final$inactivo == "0", "2", train_final$ingr_trab_d)
+train_final$bonif_anual <- ifelse(is.na(train_final$bonif_anual) & train_final$ocupado == "0" & train_final$inactivo == "0", "2", train_final$bonif_anual)                        
+
 #Ahora en test
 
 test_final$Antiguedad_trabajo <- ifelse(is.na(test_final$Antiguedad_trabajo) & test_final$ocupado == "0", "0", test_final$Antiguedad_trabajo)
@@ -373,22 +390,24 @@ test_final$subsid_educ <- ifelse(is.na(test_final$subsid_educ) & test_final$ocup
 test_final$alim_trab <- ifelse(is.na(test_final$alim_trab) & test_final$ocupado == "0", "2", test_final$alim_trab) 
 test_final$viv_pag_trab <- ifelse(is.na(test_final$viv_pag_trab) & test_final$ocupado == "0", "2", test_final$viv_pag_trab) 
 test_final$ing_esp <- ifelse(is.na(test_final$ing_esp) & test_final$ocupado == "0", "2", test_final$ing_esp) 
-test_final$hor_trab_sem <- ifelse(is.na(test_final$hor_trab_sem) & test_final$ocupado == "0", "0", test_final$hor_trab_sem) 
 test_final$otro_trab <- ifelse(is.na(test_final$otro_trab) & test_final$ocupado == "0", "2", test_final$otro_trab) 
-test_final$hor_trab_seg_sem <- ifelse(is.na(test_final$hor_trab_seg_sem) & test_final$ocupado == "0", "0", test_final$hor_trab_seg_sem)
+test_final$hor_trab_sem <- ifelse(is.na(test_final$hor_trab_sem) & test_final$ocupado == "0", "0", test_final$hor_trab_sem)
 test_final$deseo_hor <- ifelse(is.na(test_final$deseo_hor) & test_final$ocupado == "0", "2", test_final$deseo_hor)
-test_final$ingr_trab_d <- ifelse(is.na(test_final$ingr_trab_d) & test_final$desocupado == "0" & test_final$inactivo == "0", "2", test_final$ingr_trab_d)
-test_final$bonif_anual <- ifelse(is.na(train_final$test_anual) & test_final$desocupado == "0" & test_final$inactivo == "0", "2", test_final$bonif_anual)                        
+test_final$ingr_trab_d <- ifelse(is.na(test_final$ingr_trab_d) & test_final$ocupado == "0" & test_final$inactivo == "0", "2", test_final$ingr_trab_d)
+test_final$bonif_anual <- ifelse(is.na(test_final$bonif_anual) & test_final$ocupado == "0" & test_final$inactivo == "0", "2", test_final$bonif_anual)                        
 
 names(test_final)
 
 ##Primero imputamos los NA con la media del grado de educación para
 ##sacar el promedio de educación por el hogar
+
 train_final$Educacion_promedio <- as.numeric(train_final$Educacion_promedio )
 test_final$Educacion_promedio <- as.numeric(test_final$Educacion_promedio )
 media_educ <- mean(train_final$Educacion_promedio, na.rm = TRUE)
-train_final$Educacion_promedio <- ifelse(is.na(train_final$Educacion_promedio), "0", train_final$Educacion_promedio)
-test_final$Educacion_promedio <- ifelse(is.na(test_final$Educacion_promedio), "0", test_final$Educacion_promedio)
+media_educ <- round(media_educ, 0)
+train_final$Educacion_promedio <- ifelse(is.na(train_final$Educacion_promedio), media_educ, train_final$Educacion_promedio)
+test_final$Educacion_promedio <- ifelse(is.na(test_final$Educacion_promedio), media_educ, test_final$Educacion_promedio)
+
 
 ##Para la variable "tipo de trabajo" hacemos imputación de "otro"
 ##pues el jefe del hogar contestó que está desocupado e inactivo y
@@ -400,6 +419,49 @@ test_final$Tipo_de_trabajo <- ifelse(is.na(test_final$Tipo_de_trabajo) & test_fi
 length(unique(test_final$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
-# Grabamos las bases de datos finales
-save(train_final, file = "train_final.RData")
-save(test_final, file = "test_final.RData")
+# Grabamos las bases de datos sin imputaciones en variables
+## categoricas en formato rds
+setwd("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3")
+saveRDS(train_final, file = "../stores/train_final.rds")
+saveRDS(test_final, file = "../stores/test_final.rds")
+
+###Como se siguen teniendo NAs en las variables catégoricas,
+#vamos a imputar por moda en cada una de ellas, para mayor información
+##véase: https://rstudio-pubs-static.s3.amazonaws.com/788490_4a1cd5ddda6a4e2b9c242766b2923351.html
+
+# Evalúo variables con missing values para imputar
+
+missing_valuesTrain <- colSums(is.na(train_final)) #sumo los NA's para cada variable
+missing_table <- data.frame(Variable = names(missing_valuesTrain), Missing_Values = missing_valuesTrain) # lo reflejo en un data.frame
+missing_table
+
+###Hago imputación de esas variables que me dan missing values, siguiendo la recomendación de: 
+###https://www.r-bloggers.com/2015/10/imputing-missing-data-with-r-mice-package/amp/
+
+# imputo con mice.impute.2lonly.pmm: Método de imputación para datos numéricos y categóricos utilizando 
+#Predictive Mean Matching (PMM. Este método encuentra observaciones similares con valores no faltantes 
+#en las variables predictoras y reemplaza los valores faltantes con valores de observaciones similares que tienen valores conocidos.
+#Con la opción methods(mice) pueden ver los métodos de imputación para seleccionar el más acorde
+
+
+
+##Excluyo "hor_trab_seg_sem" porque más del 70% son missing y estaríamos
+##creando sesgo al imputar casi todo el 100% de la muestra. Por esa razón se excluye
+
+
+train_imp <- select(train_final, ing_hor_ext, prima, bonif,
+                    sub_trans, subsid_fam, subsid_educ, alim_trab,
+                    viv_pag_trab, ing_esp, bonif_anual,fondo_pensiones,
+                    ingr_trab_d, pagos_arr_pen, din_otr_per, hor_trab_sem)  # Selecciono variables para imputar
+
+mice_data <- mice(train_imp, m = 5, method = "pmm", seed = 222)# imputo con mice.impute.2lonly.pmm: Método de imputación para datos numéricos utilizando Predictive Mean Matching (PMM) con dos etapas (dos niveles).                                                                    
+
+data_imp_1 <- (train_final)##creo una copia por si me sale error
+data_imp_1 <- mice::complete(mice_data) # Una recomendación sería imputar sobre una base de copia para que, en caso de error, no tengan que correr todo el código nuevamente
+
+vars_to_keep <- setdiff(names(train_final), names(data_imp_1))
+data_to_keep <- train_final[vars_to_keep]
+data_na <- cbind(data_to_keep, data_imp_1)
+
+data1 <- data_na
+

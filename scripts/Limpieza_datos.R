@@ -441,12 +441,15 @@ missing_table
 ##Excluyo "ingr_trab_d" porque más del 70% son missing y estaríamos
 ##creando sesgo al imputar casi todo el 100% de la muestra. Por esa razón se excluye
 
+train_final <- subset(train_final, select = -ingr_trab_d)
+test_final <- subset(test_final, select = -ingr_trab_d)
+
 #Primero en train, calculo la moda
 
 train_imp <- select(train_final, ing_hor_ext, prima, bonif,
                     sub_trans, subsid_fam, subsid_educ, alim_trab,
                     viv_pag_trab, ing_esp, bonif_anual,fondo_pensiones,
-                    pagos_arr_pen, din_otr_per, hor_trab_sem) 
+                    pagos_arr_pen, din_otr_per, hor_trab_sem, seg_soc,Regimen_salud) 
 
 calcular_moda <- function(x) {
   tabla_frecuencias <- table(x)
@@ -469,7 +472,7 @@ for (col in names(train_imp)) {
 test_imp <- select(test_final, ing_hor_ext, prima, bonif,
                     sub_trans, subsid_fam, subsid_educ, alim_trab,
                     viv_pag_trab, ing_esp, bonif_anual,fondo_pensiones,
-                    pagos_arr_pen, din_otr_per, hor_trab_sem) 
+                    pagos_arr_pen, din_otr_per, hor_trab_sem, seg_soc,Regimen_salud) 
 
 modas2 <- sapply(test_imp, calcular_moda)
 
@@ -482,14 +485,65 @@ for (col in names(test_imp)) {
   # Reemplazar los valores NA con la moda correspondiente utilizando ifelse()
   test_imp[[col]] <- ifelse(is.na(test_imp[[col]]), moda_actual, test_imp[[col]])
 }
+#Actualizo nuevas variables imputadas en cada dataset con los valores NA reemplazados
+#por la moda
 
+##Train
 train_final$ing_hor_ext <- train_imp$ing_hor_ext
-db_new_flt$banos <- imputed_data$banos
+train_final$prima <- train_imp$prima
+train_final$bonif <- train_imp$bonif
+train_final$sub_trans <- train_imp$sub_trans
+train_final$subsid_fam <- train_imp$subsid_fam
+train_final$subsid_educ <- train_imp$subsid_educ
+train_final$alim_trab <- train_imp$alim_trab
+train_final$viv_pag_trab <- train_imp$viv_pag_trab
+train_final$ing_esp <- train_imp$ing_esp
+train_final$bonif_anual <- train_imp$bonif_anual
+train_final$fondo_pensiones <- train_imp$fondo_pensiones
+train_final$pagos_arr_pen <- train_imp$pagos_arr_pen
+train_final$din_otr_per <- train_imp$din_otr_per
+train_final$hor_trab_sem <- train_imp$hor_trab_sem
+train_final$seg_soc <- train_imp$seg_soc
+train_final$Regimen_salud  <- train_imp$Regimen_salud 
+
+##Test
+
+test_final$ing_hor_ext <- test_imp$ing_hor_ext
+test_final$prima <- test_imp$prima
+test_final$bonif <- test_imp$bonif
+test_final$sub_trans <- test_imp$sub_trans
+test_final$subsid_fam <- test_imp$subsid_fam
+test_final$subsid_educ <- test_imp$subsid_educ
+test_final$alim_trab <- test_imp$alim_trab
+test_final$viv_pag_trab <- test_imp$viv_pag_trab
+test_final$ing_esp <- test_imp$ing_esp
+test_final$bonif_anual <- test_imp$bonif_anual
+test_final$fondo_pensiones <- test_imp$fondo_pensiones
+test_final$pagos_arr_pen <- test_imp$pagos_arr_pen
+test_final$din_otr_per <- test_imp$din_otr_per
+test_final$hor_trab_sem <- test_imp$hor_trab_sem
+test_final$seg_soc <- test_imp$seg_soc
+test_final$Regimen_salud  <- test_imp$Regimen_salud 
 
 
-cantidad_nas <- sum(is.na(train_final$ing_hor_ext))
-cantidad_nas
+###El unico dato que queda con un missing es el de pet,
+###Imputamos por su media porque es continua
 
+media_pet <- mean(train_final$pet, na.rm = TRUE)
+media_pet<- round(media_pet, 0)
+train_final$pet <- ifelse(is.na(train_final$pet), media_pet, train_final$pet)
+test_final$pet <- ifelse(is.na(test_final$pet), media_pet, test_final$pet)
 
+###Validamos missing en ambos datasets (train y test)
+
+missing_valuesTrain <- colSums(is.na(train_final)) #sumo los NA's para cada variable
+missing_table <- data.frame(Variable = names(missing_valuesTrain), Missing_Values = missing_valuesTrain) # lo reflejo en un data.frame
+missing_table
+
+missing_valuesTest <- colSums(is.na(test_final)) #sumo los NA's para cada variable
+missing_table1 <- data.frame(Variable = names(missing_valuesTest), Missing_Values = missing_valuesTest) # lo reflejo en un data.frame
+missing_table1
+
+glimpse(train_final)
 
 

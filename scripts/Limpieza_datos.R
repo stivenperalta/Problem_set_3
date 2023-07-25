@@ -36,7 +36,8 @@ length(unique(m_test$id))
 length(unique(m_train$id))
 
 ##Una vez se han unido el los datos a nivel de persona a hogar-------------------------------------------------------
-#Procedemos con la creación y eliminación de variables
+#Procedemos con la creación y eliminación de variables, aprovechamos la información
+##de personas para crear variables agragadas al hogar que permitan predecir pobreza e ingreso
 
 ##Para empezar, empezamos por la variable de si vive en cabecera o en 
 ##zona urbana: convertir variable "Clase" del dataset original
@@ -112,14 +113,13 @@ m_train <- rename(m_train, Nivel_educativo = P6210)
 m_test$P6210[is.na(m_test$P6210)] <- 0 # los NA en teoría corresponden a personas que no reportan grado, los ajustamos a cero.
 m_train$P6210[is.na(m_train$P6210)] <- 0
 
-
-m_train$Añoseduc <- ifelse(m_train$P6210 == 3, 5, 
+m_train$Max_grado <- ifelse(m_train$P6210 == 3, 5, 
                            ifelse(m_train$P6210  == 4, 9, 
                                   ifelse(m_train$P6210  == 5, 11, 
                                          ifelse(m_train$P6210  == 6, 16, 
                                                 ifelse(m_train$P6210  == 9, 0, 0)))))
 
-m_test$Añoseduc <- ifelse(m_test$P6210 == 3, 5, 
+m_test$Max_grado <- ifelse(m_test$P6210 == 3, 5, 
                           ifelse(m_test$P6210  == 4, 9, 
                                  ifelse(m_test$P6210  == 5, 11, 
                                         ifelse(m_test$P6210  == 6, 16, 
@@ -235,12 +235,12 @@ m_train$Porcentaje_ocupados <-  m_train$Suma_ocupados / m_train$Nper
 
 m_test <- m_test %>%
   group_by(id) %>%
-  mutate(suma_anos = sum(Grado_edu))
+  mutate(suma_anos = sum(Max_grado))
 m_test$Educacion_promedio <-  m_test$suma_anos / m_test$Nper
 
 m_train <- m_train %>%
   group_by(id) %>%
-  mutate(suma_anos = sum(Grado_edu))
+  mutate(suma_anos = sum(Max_grado))
 m_train$Educacion_promedio <-  m_train$suma_anos / m_train$Nper
 
 #####Agregamos la variable Ingpcug y pobre a test_hogares
@@ -274,7 +274,7 @@ m_test <- rename(m_test, pet= Pet, ocupado= Oc2, desocupado= Des, inactivo= Ina,
 length(unique(m_test$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(m_train$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
-## Ya tenemos todas las variables, las operaciones que provienen de personas las asignamos para todo el hogar, 
+## Ya tenemos todas las variables, las operaciones que provienen de personas las asignamos para todo el hogar, ######
 ##especificamente para el Jefe de Hogar, por lo tanto, procedemos a generar las data por hogar nuevamente.
 
 m_train <- rename(m_train, Jefe_hogar = P6050)
@@ -312,7 +312,7 @@ train_final <-subset(m_train, select = c("id","Porcentaje_ocupados","v.cabecera"
                                           "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
                                          "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educacion_promedio",
-                                         "sexo", "edad","seg_soc", "Nivel_educativo", "Añoseduc" ,                        
+                                         "sexo", "edad","seg_soc", "Nivel_educativo", "Max_grado" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
                                          "subsid_educ","alim_trab","viv_pag_trab",
@@ -327,14 +327,14 @@ test_final <-subset(m_test, select = c("id","Porcentaje_ocupados","v.cabecera","
                                          "nper","npersug","Li", "Lp", "fex_c","depto","fex_dpto",   
                                        "d_arriendo","Jefe_mujer","Jefe_hogar","PersonaxCuarto",
                                          "Tipodevivienda","Regimen_salud","Educacion_promedio",
-                                         "sexo", "edad","seg_soc",  "Nivel_educativo", "Añoseduc" ,                        
+                                         "sexo", "edad","seg_soc",  "Nivel_educativo", "Max_grado" ,                        
                                          "Antiguedad_trabajo" , "Tipo_de_trabajo", 
                                          "ing_hor_ext","prima", "bonif", "sub_trans","subsid_fam",
                                          "subsid_educ","alim_trab","viv_pag_trab",
                                          "ing_esp","bonif_anual","fondo_pensiones","otro_trab",          
                                          "hor_trab_sem","deseo_hor","ingr_trab_d",
                                          "pagos_arr_pen","din_otr_per","pet","ocupado",
-                                       "desocupado", "inactivo","per","Pobre","IngresoPerCapita"))
+                                       "desocupado", "inactivo","Pobre","IngresoPerCapita"))
 
 length(unique(test_final$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
@@ -347,7 +347,7 @@ print(missing_countrain) #s
 missing_counttest <- colSums(is.na(test_final))
 print(missing_counttest) #s
 
-###Empezamos con la imputación de datos
+###Empezamos con la imputación de datos####
 
 ###Depuramos NA en variables de Desocupados, inactivos y ocupados
 
@@ -359,8 +359,9 @@ train_final$inactivo <- ifelse(is.na(train_final$inactivo), 0, train_final$inact
 
 names(train_final)
 
-##Todos aquellos que reportaron no estar ocupados, en las variables de ingreso
-##se les imputó un 0
+##Todos aquellos que reportaron no estar ocupados, en las variables de ingreso (categ+oricas)
+##se les imputó un 0, Adicionalmente, aquellos que reportaron no estar ocupados en antiguedad trabajo
+##se les imputó con 0. 
 
 train_final$Antiguedad_trabajo <- ifelse(is.na(train_final$Antiguedad_trabajo) & train_final$ocupado == "0", "0", train_final$Antiguedad_trabajo)
 train_final$ing_hor_ext <- ifelse(is.na(train_final$ing_hor_ext) & train_final$ocupado == "0", "2", train_final$ing_hor_ext)
@@ -375,8 +376,8 @@ train_final$ing_esp <- ifelse(is.na(train_final$ing_esp) & train_final$ocupado =
 train_final$otro_trab <- ifelse(is.na(train_final$otro_trab) & train_final$ocupado == "0", "2", train_final$otro_trab) 
 train_final$hor_trab_sem <- ifelse(is.na(train_final$hor_trab_sem) & train_final$ocupado == "0", "0", train_final$hor_trab_sem)
 train_final$deseo_hor <- ifelse(is.na(train_final$deseo_hor) & train_final$ocupado == "0", "2", train_final$deseo_hor)
-train_final$ingr_trab_d <- ifelse(is.na(train_final$ingr_trab_d) & train_final$ocupado == "0" & train_final$inactivo == "0", "2", train_final$ingr_trab_d)
-train_final$bonif_anual <- ifelse(is.na(train_final$bonif_anual) & train_final$ocupado == "0" & train_final$inactivo == "0", "2", train_final$bonif_anual)                        
+train_final$ingr_trab_d <- ifelse(is.na(train_final$ingr_trab_d) & train_final$ocupado == "0" & train_final$inactivo == "1", "2", train_final$ingr_trab_d)
+train_final$bonif_anual <- ifelse(is.na(train_final$bonif_anual) & train_final$ocupado == "0" & train_final$inactivo == "1", "2", train_final$bonif_anual)                        
 
 #Ahora en test
 
@@ -393,20 +394,20 @@ test_final$ing_esp <- ifelse(is.na(test_final$ing_esp) & test_final$ocupado == "
 test_final$otro_trab <- ifelse(is.na(test_final$otro_trab) & test_final$ocupado == "0", "2", test_final$otro_trab) 
 test_final$hor_trab_sem <- ifelse(is.na(test_final$hor_trab_sem) & test_final$ocupado == "0", "0", test_final$hor_trab_sem)
 test_final$deseo_hor <- ifelse(is.na(test_final$deseo_hor) & test_final$ocupado == "0", "2", test_final$deseo_hor)
-test_final$ingr_trab_d <- ifelse(is.na(test_final$ingr_trab_d) & test_final$ocupado == "0" & test_final$inactivo == "0", "2", test_final$ingr_trab_d)
-test_final$bonif_anual <- ifelse(is.na(test_final$bonif_anual) & test_final$ocupado == "0" & test_final$inactivo == "0", "2", test_final$bonif_anual)                        
+test_final$ingr_trab_d <- ifelse(is.na(test_final$ingr_trab_d) & test_final$ocupado == "0" & test_final$inactivo == "1", "2", test_final$ingr_trab_d)
+test_final$bonif_anual <- ifelse(is.na(test_final$bonif_anual) & test_final$ocupado == "0" & test_final$inactivo == "1", "2", test_final$bonif_anual)                        
 
 names(test_final)
 
 ##Primero imputamos los NA con la media del grado de educación para
 ##sacar el promedio de educación por el hogar
 
-train_final$Educacion_promedio <- as.numeric(train_final$Educacion_promedio )
-test_final$Educacion_promedio <- as.numeric(test_final$Educacion_promedio )
-media_educ <- mean(train_final$Educacion_promedio, na.rm = TRUE)
-media_educ <- round(media_educ, 0)
-train_final$Educacion_promedio <- ifelse(is.na(train_final$Educacion_promedio), media_educ, train_final$Educacion_promedio)
-test_final$Educacion_promedio <- ifelse(is.na(test_final$Educacion_promedio), media_educ, test_final$Educacion_promedio)
+#train_final$Educacion_promedio <- as.numeric(train_final$Educacion_promedio )
+#test_final$Educacion_promedio <- as.numeric(test_final$Educacion_promedio )
+#media_educ <- mean(train_final$Educacion_promedio, na.rm = TRUE)
+#media_educ <- round(media_educ, 0)
+#train_final$Educacion_promedio <- ifelse(is.na(train_final$Educacion_promedio), media_educ, train_final$Educacion_promedio)
+#test_final$Educacion_promedio <- ifelse(is.na(test_final$Educacion_promedio), media_educ, test_final$Educacion_promedio)
 
 
 ##Para la variable "tipo de trabajo" hacemos imputación de "otro"
@@ -426,8 +427,6 @@ saveRDS(train_final, file = "../stores/train_final.rds")
 saveRDS(test_final, file = "../stores/test_final.rds")
 
 ###Como se siguen teniendo NAs en las variables catégoricas,
-#vamos a imputar por moda en cada una de ellas, para mayor información
-##véase: https://rstudio-pubs-static.s3.amazonaws.com/788490_4a1cd5ddda6a4e2b9c242766b2923351.html
 
 # Evalúo variables con missing values para imputar
 
@@ -436,32 +435,61 @@ missing_table <- data.frame(Variable = names(missing_valuesTrain), Missing_Value
 missing_table
 
 ###Hago imputación de esas variables que me dan missing values, siguiendo la recomendación de: 
-###https://www.r-bloggers.com/2015/10/imputing-missing-data-with-r-mice-package/amp/
+##imputar por la MODA de cada una de ellas. Para más información, véase:
+##https://rstudio-pubs-static.s3.amazonaws.com/788490_4a1cd5ddda6a4e2b9c242766b2923351.html
 
-# imputo con mice.impute.2lonly.pmm: Método de imputación para datos numéricos y categóricos utilizando 
-#Predictive Mean Matching (PMM. Este método encuentra observaciones similares con valores no faltantes 
-#en las variables predictoras y reemplaza los valores faltantes con valores de observaciones similares que tienen valores conocidos.
-#Con la opción methods(mice) pueden ver los métodos de imputación para seleccionar el más acorde
-
-
-
-##Excluyo "hor_trab_seg_sem" porque más del 70% son missing y estaríamos
+##Excluyo "ingr_trab_d" porque más del 70% son missing y estaríamos
 ##creando sesgo al imputar casi todo el 100% de la muestra. Por esa razón se excluye
 
+#Primero en train, calculo la moda
 
 train_imp <- select(train_final, ing_hor_ext, prima, bonif,
                     sub_trans, subsid_fam, subsid_educ, alim_trab,
                     viv_pag_trab, ing_esp, bonif_anual,fondo_pensiones,
-                    ingr_trab_d, pagos_arr_pen, din_otr_per, hor_trab_sem)  # Selecciono variables para imputar
+                    pagos_arr_pen, din_otr_per, hor_trab_sem) 
 
-mice_data <- mice(train_imp, m = 5, method = "pmm", seed = 222)# imputo con mice.impute.2lonly.pmm: Método de imputación para datos numéricos utilizando Predictive Mean Matching (PMM) con dos etapas (dos niveles).                                                                    
+calcular_moda <- function(x) {
+  tabla_frecuencias <- table(x)
+  moda <- names(tabla_frecuencias)[tabla_frecuencias == max(tabla_frecuencias)]
+  return(moda)
+}
+modas1 <- sapply(train_imp, calcular_moda)
 
-data_imp_1 <- (train_final)##creo una copia por si me sale error
-data_imp_1 <- mice::complete(mice_data) # Una recomendación sería imputar sobre una base de copia para que, en caso de error, no tengan que correr todo el código nuevamente
+###Ahora hago la imputación de la moda en cada una de esas variables categóricas
+##con missing en train
 
-vars_to_keep <- setdiff(names(train_final), names(data_imp_1))
-data_to_keep <- train_final[vars_to_keep]
-data_na <- cbind(data_to_keep, data_imp_1)
+for (col in names(train_imp)) {
+  # Calcular la moda para la columna actual
+  moda_actual <- calcular_moda(train_imp[[col]])
+  # Reemplazar los valores NA con la moda correspondiente utilizando ifelse()
+  train_imp[[col]] <- ifelse(is.na(train_imp[[col]]), moda_actual, train_imp[[col]])
+}
 
-data1 <- data_na
+#Segundo en test, calculo la moda
+test_imp <- select(test_final, ing_hor_ext, prima, bonif,
+                    sub_trans, subsid_fam, subsid_educ, alim_trab,
+                    viv_pag_trab, ing_esp, bonif_anual,fondo_pensiones,
+                    pagos_arr_pen, din_otr_per, hor_trab_sem) 
+
+modas2 <- sapply(test_imp, calcular_moda)
+
+###Ahora hago la imputación de la moda en cada una de esas variables categóricas
+##con missing en test
+
+for (col in names(test_imp)) {
+  # Calcular la moda para la columna actual
+  moda_actual <- calcular_moda(test_imp[[col]])
+  # Reemplazar los valores NA con la moda correspondiente utilizando ifelse()
+  test_imp[[col]] <- ifelse(is.na(test_imp[[col]]), moda_actual, test_imp[[col]])
+}
+
+train_final$ing_hor_ext <- train_imp$ing_hor_ext
+db_new_flt$banos <- imputed_data$banos
+
+
+cantidad_nas <- sum(is.na(train_final$ing_hor_ext))
+cantidad_nas
+
+
+
 

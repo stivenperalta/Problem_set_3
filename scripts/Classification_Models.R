@@ -15,18 +15,27 @@ getwd()
 #vemos que hay en el directorio de stores
 dir("../stores")
 
-test<-load("../stores/test_final.RData")
-train<-load("../stores/train_final.RData")
+test<-readRDS("../stores/test_final.rds")
+train<-readRDS("../stores/train_final.rds")
 
 #vemos variables
-names(test_final)
-names(train_final)
+names(test)
+names(train)
 
-table(train_final$Pobre)
-glimpse(train_final)
+#renombramos variable Pobre a pobre
+test <- test %>%
+  rename(pobre = Pobre)
+train <- train %>%
+  rename(pobre=Pobre)
+
+table(train$pobre)
+glimpse(train)
 
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
-train_final$Pobre <- factor(train_final$Pobre, levels = c("0", "1"), labels = c("No", "Si"))
+
+train$pobre <- factor(train$pobre, levels = c("0", "1"), labels = c("No", "Si"))
+
+
 
 # LOGIT  -------------------------------------------------------------------
 
@@ -47,8 +56,8 @@ hyperparameter_grid <- expand.grid(alpha = seq(0, 1, 0.1), # iremos variando los
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
 
-logit1 <- train(Pobre~., #especifico mi formula. primero utilizaremos todos los predictores "."
-                data = train_final,
+logit1 <- train(pobre~., #especifico mi formula. primero utilizaremos todos los predictores "."
+                data = train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
                 trControl = ctrl,
@@ -83,9 +92,9 @@ comparison<-list() #para guardar los predicted class de cada threshold
 #predictions (on loop para diferentes thresholds)
 
 for (threshold in thresholds) {
-  pred_probs<- predict(logit1, newdata=train_final, type="prob")
+  pred_probs<- predict(logit1, newdata=train, type="prob")
   pred_label<- ifelse(predicted_probs[,"1"]>=threshold,1,0) #creamos labels basado en los diferentes thresholds
-  comparison<-confusionMatrix(data=factor(pred_label), reference=factor(train_final$Pobre))
+  comparison<-confusionMatrix(data=factor(pred_label), reference=factor(train$pobre))
   comparison[[as.character(threshold)]]<-comparison
   }
 
@@ -101,6 +110,18 @@ head(predictTest_logit)
 head(predictTest_logit2)
 
 confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
+
+
+#Predicción Kaggle LOGIT
+
+# Exporto la predicción en csv para cargar en Kaggle
+test$pobre <- predict(logit1, newdata = test) #adaptamos 
+test_logit1 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+head(test_logit1) #evalúo que la base esté correctamente creada
+write.csv(test_logit1,"../stores/test_logit1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+
 
 
 # LDA -------------------------------------

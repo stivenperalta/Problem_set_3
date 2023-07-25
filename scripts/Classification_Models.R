@@ -67,23 +67,35 @@ logit2 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especif
 )
 
 
+# LOGIT BESTUNES ----------------------------------------------------------
+
 #Adaptamos hiperparámetros en base a esto
 logit1$bestTune
+logit2$bestTune
 
 logit1
+logit2
 
-#predictions (probar ambas)
+#Thresholds para el corte
+thresholds <-seq(0.1,0.9,0.1)
+comparison<-list() #para guardar los predicted class de cada threshold
+
+#predictions (on loop para diferentes thresholds)
+
+for (threshold in thresholds) {
+  pred_probs<- predict(logit1, newdata=train_final, type="prob")
+  pred_label<- ifelse(predicted_probs[,"1"]>=threshold,1,0) #creamos labels basado en los diferentes thresholds
+  comparison<-confusionMatrix(data=factor(pred_label), reference=factor(train_final$Pobre))
+  comparison[[as.character(threshold)]]<-comparison
+  }
+
+
 predictTest_logit <- data.frame(
   obs = hogares$pobre,                    ## observed class labels
   predict(logit1, type = "prob"),         ## predicted class probabilities
   pred = predict(logit1, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
 
-predictTest_logit2<- predictTest_logit2 %>%
-  mutate(class_ROC= predict(logit1, newdata=hogares,type="raw"),
-         p_hat_ROC= predict(logit1, newdata=hogares, type="prob")$Si,
-         Default_num=ifelse(Defaulta=="No",0,1)
-         )
 
 head(predictTest_logit)
 head(predictTest_logit2)

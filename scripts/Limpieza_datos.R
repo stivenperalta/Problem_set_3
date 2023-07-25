@@ -602,10 +602,56 @@ test_final <- test_final %>%
 glimpse(train_final)
 glimpse(test_final)
 
+###Ahora cambiamos los 2 por 0 
+#En train
+train_final <- train_final %>%
+  mutate(
+    d_arriendo = ifelse(d_arriendo ==2, 0, d_arriendo),
+    ing_hor_ext = ifelse(ing_hor_ext ==2, 0, ing_hor_ext),
+    prima = ifelse(prima ==2, 0, prima),
+    bonif = ifelse(bonif ==2, 0, bonif), 
+    sub_trans = ifelse(sub_trans ==2, 0, sub_trans),
+    subsid_fam = ifelse(subsid_fam ==2, 0, subsid_fam),
+    subsid_educ = ifelse(subsid_educ ==2, 0, subsid_educ),
+    alim_trab = ifelse(alim_trab ==2, 0, alim_trab),
+    viv_pag_trab = ifelse(viv_pag_trab ==2, 0, viv_pag_trab),
+    ing_esp = ifelse(ing_esp ==2, 0, ing_esp),
+    bonif_anual= ifelse(bonif_anual ==2, 0, bonif_anual),
+    fondo_pensiones = ifelse(fondo_pensiones ==2, 0, fondo_pensiones),
+    otro_trab = ifelse(otro_trab ==2, 0, otro_trab),
+    deseo_hor= ifelse(deseo_hor ==2, 0, deseo_hor),
+    pagos_arr_pen = ifelse(pagos_arr_pen ==2, 0, pagos_arr_pen),
+    din_otr_per = ifelse(din_otr_per ==2, 0, din_otr_per))
+    
+glimpse(train_final)    
+
+#En test     
+  
+test_final <- test_final %>%
+  mutate(
+    d_arriendo = ifelse(d_arriendo ==2, 0, d_arriendo),
+    ing_hor_ext = ifelse(ing_hor_ext ==2, 0, ing_hor_ext),
+    prima = ifelse(prima ==2, 0, prima),
+    bonif = ifelse(bonif ==2, 0, bonif), 
+    sub_trans = ifelse(sub_trans ==2, 0, sub_trans),
+    subsid_fam = ifelse(subsid_fam ==2, 0, subsid_fam),
+    subsid_educ = ifelse(subsid_educ ==2, 0, subsid_educ),
+    alim_trab = ifelse(alim_trab ==2, 0, alim_trab),
+    viv_pag_trab = ifelse(viv_pag_trab ==2, 0, viv_pag_trab),
+    ing_esp = ifelse(ing_esp ==2, 0, ing_esp),
+    bonif_anual= ifelse(bonif_anual ==2, 0, bonif_anual),
+    fondo_pensiones = ifelse(fondo_pensiones ==2, 0, fondo_pensiones),
+    otro_trab = ifelse(otro_trab ==2, 0, otro_trab),
+    deseo_hor= ifelse(deseo_hor ==2, 0, deseo_hor),
+    pagos_arr_pen = ifelse(pagos_arr_pen ==2, 0, pagos_arr_pen),
+    din_otr_per = ifelse(din_otr_per ==2, 0, din_otr_per))
+   
+glimpse(test_final)   
+
 # Grabamos las bases de datos con imputaciones en variables
 ## categoricas en formato rds
 setwd("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3")
-saveRDS(train_final, file = "../stores/train_final.rds")
-saveRDS(test_final, file = "../stores/test_final.rds")
+saveRDS(train_final, file = "stores/train_final.rds")
+saveRDS(test_final, file = "stores/test_final.rds")
 
 

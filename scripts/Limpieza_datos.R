@@ -420,11 +420,6 @@ test_final$Tipo_de_trabajo <- ifelse(is.na(test_final$Tipo_de_trabajo) & test_fi
 length(unique(test_final$id))  #validamos nuevamente que no hallamos perdido hogares en el proceso
 length(unique(train_final$id)) #validamos nuevamente que no hallamos perdido hogares en el proceso
 
-# Grabamos las bases de datos sin imputaciones en variables
-## categoricas en formato rds
-setwd("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3")
-saveRDS(train_final, file = "../stores/train_final.rds")
-saveRDS(test_final, file = "../stores/test_final.rds")
 
 ###Como se siguen teniendo NAs en las variables catégoricas,
 
@@ -545,5 +540,72 @@ missing_table1 <- data.frame(Variable = names(missing_valuesTest), Missing_Value
 missing_table1
 
 glimpse(train_final)
+
+
+###Convertimos las variables a factor y cambiamos los 2 por 0 (para unificar formato con
+## otras variables categóricas)
+
+train_final <- train_final %>%
+  mutate(
+    d_arriendo = factor(d_arriendo, levels = c(0, 1)),
+    seg_soc = factor(seg_soc, levels = c(0,1,2,3,9)),   
+    Tipo_de_trabajo = factor(Tipo_de_trabajo, levels = c(2,3,4,5,6,7,8,9,10)),
+    ing_hor_ext = factor(ing_hor_ext, levels = c(1,2,9)),
+    prima = factor(prima, levels = c(1,2,9)),
+    bonif = factor(bonif, levels = c(1,2,9)),
+    sub_trans= factor(sub_trans, levels = c(1,2,9)),
+    subsid_fam= factor(subsid_fam, levels = c(1,2,9)),
+    subsid_educ= factor(subsid_educ, levels = c(1,2,9)),
+    alim_trab= factor(alim_trab, levels = c(1,2,9)),
+    viv_pag_trab= factor(viv_pag_trab, levels = c(1,2,9)),
+    ing_esp = factor(ing_esp, levels = c(1,2,9)),
+    bonif_anual= factor(bonif_anual, levels = c(1,2,9)),
+    fondo_pensiones = factor(bonif_anual, levels = c(1,2,9)),
+    otro_trab= factor(otro_trab, levels = c(1,2,9)),
+    deseo_hor= factor(deseo_hor, levels = c(1,2,9)),
+    pagos_arr_pen= factor(pagos_arr_pen, levels = c(1,2,9)),
+    din_otr_per= factor(din_otr_per, levels = c(1,2)),
+    ocupado= factor(ocupado, levels = c(1,0)),
+    desocupado= factor(desocupado, levels = c(1,0)),
+    inactivo= factor(inactivo, levels = c(1,0)),
+    Pobre= factor(Pobre, levels = c(1,0)),
+    )
+
+
+###Ahora en test
+
+test_final <- test_final %>%
+  mutate(
+    d_arriendo = factor(d_arriendo, levels = c(0, 1)),
+    seg_soc = factor(seg_soc, levels = c(0,1,2,3,9)),   
+    Tipo_de_trabajo = factor(Tipo_de_trabajo, levels = c(2,3,4,5,6,7,8,9,10)),
+    ing_hor_ext = factor(ing_hor_ext, levels = c(1,2,9)),
+    prima = factor(prima, levels = c(1,2,9)),
+    bonif = factor(bonif, levels = c(1,2,9)),
+    sub_trans= factor(sub_trans, levels = c(1,2,9)),
+    subsid_fam= factor(subsid_fam, levels = c(1,2,9)),
+    subsid_educ= factor(subsid_educ, levels = c(1,2,9)),
+    alim_trab= factor(alim_trab, levels = c(1,2,9)),
+    viv_pag_trab= factor(viv_pag_trab, levels = c(1,2,9)),
+    ing_esp = factor(ing_esp, levels = c(1,2,9)),
+    bonif_anual= factor(bonif_anual, levels = c(1,2,9)),
+    fondo_pensiones = factor(bonif_anual, levels = c(1,2,9)),
+    otro_trab= factor(otro_trab, levels = c(1,2,9)),
+    deseo_hor= factor(deseo_hor, levels = c(1,2,9)),
+    pagos_arr_pen= factor(pagos_arr_pen, levels = c(1,2,9)),
+    din_otr_per= factor(din_otr_per, levels = c(1,2)),
+    ocupado= factor(ocupado, levels = c(1,0)),
+    desocupado= factor(desocupado, levels = c(1,0)),
+    inactivo= factor(inactivo, levels = c(1,0)),
+    Pobre= factor(Pobre, levels = c(1,0)))
+
+glimpse(train_final)
+glimpse(test_final)
+
+# Grabamos las bases de datos con imputaciones en variables
+## categoricas en formato rds
+setwd("C:/Users/andye/OneDrive/Documentos/GitHub/Problem_set_3")
+saveRDS(train_final, file = "../stores/train_final.rds")
+saveRDS(test_final, file = "../stores/test_final.rds")
 
 

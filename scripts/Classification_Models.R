@@ -47,10 +47,10 @@ hyperparameter_grid <- expand.grid(alpha = seq(0, 1, 0.1), # iremos variando los
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
 
-logit1 <- train(Pobre~., #especifico mi formula, dejo los que pueden crear multicolinealidad
+logit1 <- train(Pobre~., #especifico mi formula. primero utilizaremos todos los predictores "."
                 data = train_final,
-                metric="Accuracy",
-                method = "glmnet",
+                metric="Accuracy", #metrica de performance
+                method = "glmnet", #logistic regression with elastic net regularization
                 trControl = ctrl,
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"

@@ -28,7 +28,7 @@ glimpse(train_final)
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
 train_final$Pobre <- factor(train_final$Pobre, levels = c("0", "1"), labels = c("No", "Si"))
 
-# ESTIMAMOS PROBABILIDADES  -------------------------------------------------------------------
+# LOGIT  -------------------------------------------------------------------
 
 #Logit
 ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
@@ -90,13 +90,41 @@ head(predictTest_logit2)
 
 confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
 
-#ROC
+
+# LDA -------------------------------------
+lda_fit = train(Default~duration+amount+installment+age, 
+                data=train, 
+                method="lda",
+                trControl = ctrl)
+
+lda_fit
 
 
-# RECOBRAMOS PROBABILIDADES PREDICHAS -------------------------------------
-
-
-# CLASIFICACION -----------------------------------------------------------
+head(credit)
 
 
 
+# QDA-----------------------------------------------------------
+
+qda_fit= train(Default~duration+amount+installment+age,
+               data=train,
+               method="qda",
+               trControl= ctrl)
+
+qda_fit #empeoró el accuracy
+
+# KNN ---------------------------------------------------------------------
+
+set.seed(1410)
+mylogit_knn <- train(Default~duration+amount+installment+age+
+                       history.buena+history.mala+
+                       purpose.auto_nuevo+purpose.auto_usado+purpose.bienes+purpose.educacion+
+                       foreign.extranjero+
+                       +rent.TRUE, 
+                     data = train, 
+                     method = "knn",
+                     trControl = ctrl,
+                     tuneGrid = expand.grid(k=c(3,5,7,9,11)))
+
+
+mylogit_knn

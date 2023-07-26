@@ -35,6 +35,15 @@ train$pobre <- factor(train$pobre, levels = c("0", "1"), labels = c("No", "Si"))
 test$pobre <- factor(test$pobre, levels = c("0", "1"), labels = c("No", "Si"))
 
 
+#Correlation matrix
+numeric_train <- train %>% select_if(is.numeric) #separamos las numericas
+numeric_train <- ungroup(numeric_train) %>% select(-id)
+
+cor_matrix <- cor(numeric_train) #calculamos correlacion
+
+# Print the correlation matrix
+print(cor_matrix)
+
 # LOGIT  -------------------------------------------------------------------
 
 #Logit
@@ -160,26 +169,19 @@ write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predi
 
 
 # LDA -------------------------------------
-lda_fit = train(Default~duration+amount+installment+age, 
-                data=train, 
-                method="lda",
-                trControl = ctrl)
+lda_1 = train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
+              + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+              + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
+              +ocupado + desocupado+ inactivo, 
+              data=train, 
+              method="lda",
+              trControl = ctrl,
+              metric="Accuracy")
 
-lda_fit
+lda_1
 
 
 head(credit)
-
-
-
-# QDA-----------------------------------------------------------
-
-qda_fit= train(Default~duration+amount+installment+age,
-               data=train,
-               method="qda",
-               trControl= ctrl)
-
-qda_fit #empeoró el accuracy
 
 # KNN ---------------------------------------------------------------------
 

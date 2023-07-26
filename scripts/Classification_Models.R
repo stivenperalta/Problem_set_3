@@ -183,12 +183,11 @@ qda_fit #empeoró el accuracy
 
 # KNN ---------------------------------------------------------------------
 
-set.seed(1410)
-mylogit_knn <- train(Default~duration+amount+installment+age+
-                       history.buena+history.mala+
-                       purpose.auto_nuevo+purpose.auto_usado+purpose.bienes+purpose.educacion+
-                       foreign.extranjero+
-                       +rent.TRUE, 
+set.seed(2009)
+mylogit_knn <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
+                     + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+                     + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
+                     +ocupado + desocupado+ inactivo, 
                      data = train, 
                      method = "knn",
                      trControl = ctrl,
@@ -197,9 +196,23 @@ mylogit_knn <- train(Default~duration+amount+installment+age+
 
 mylogit_knn
 
+# Exporto la predicción en csv para cargar en Kaggle
+test$pobre <- predict(mylogit_knn, newdata = test) #adaptamos 
+test_knn <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_knn$pobre <- ifelse(test_knn$pobre == "No", 0, 1)
+head(test_knn) #evalúo que la base esté correctamente creada
+write.csv(test_knn,"../stores/knn1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+
 
 # Resultados de tune grid -------------------------------------------------
 
 #LOGIT
 alpha lambda
 37  0.86      0
+
+
+#KNN
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was k = 11.

@@ -44,6 +44,13 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
                     verbose=FALSE,
                     savePredictions = T) #que guarde las predicciones
 
+ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
+                     number = 10, #mejor 10. no sirve para dato espaciales
+                     classProbs = TRUE, #probabilidad de las clases en lugar de raw predicciones
+                     verbose=FALSE,
+                     savePredictions = T,
+                     summaryFunction = twoClassSummary
+                     )
 
 set.seed(2023)
 
@@ -66,7 +73,7 @@ logit1 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                 family= "binomial"
 )
 
-#para tune
+#para tune logit1
 plot(logit1$results$lambda,
      logit1$results$Accuracy,
      xlab="lambda",
@@ -78,12 +85,19 @@ logit2 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                 + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
                 +ocupado + desocupado+ inactivo,
                 data = train,
-                metric="F1 Score",
+                metric="ROC",
                 method = "glmnet",
-                trControl = ctrl,
+                trControl = ctrl2,
                 tuneGrid = hyperparameter_grid,
+                tuneLength= 10,
                 family= "binomial",
 )
+
+#para tune logit2
+plot(logit2$results$lambda,
+     logit2$results$Accuracy,
+     xlab="lambda",
+     ylab="Accuracy")
 
 
 # LOGIT BESTUNES ----------------------------------------------------------
@@ -100,19 +114,6 @@ logit2
 # Cambiando cortes para Logit ---------------------------------------------
 
 
-#Thresholds para el corte
-thresholds <-seq(0.1,0.9,0.1)
-comparison<-list() #para guardar los predicted class de cada threshold
-
-#predictions (on loop para diferentes thresholds)
-
-for (threshold in thresholds) {
-  pred_probs<- predict(logit1, newdata=train, type="prob")
-  pred_label<- ifelse(pred_probs[,1]>=threshold,1,0) #creamos labels basado en los diferentes thresholds
-  pred_label <- factor(pred_label, levels = levels(train$pobre))  # Ensure both have the same levels
-  comparison[[as.character(threshold)]] <- confusionMatrix(data = pred_label, reference = factor(train$pobre))
-}
-
 
 predictTest_logit <- data.frame(
   obs = train$pobre,                    ## observed class labels
@@ -121,10 +122,19 @@ predictTest_logit <- data.frame(
 )
 
 
+predictTest_logit2 <- data.frame(
+  obs = train$pobre,                    ## observed class labels
+  predict(logit2, type = "prob"),         ## predicted class probabilities
+  pred = predict(logit2, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
+)
+
+
+
 head(predictTest_logit)
 head(predictTest_logit2)
 
 confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
+confusionMatrix(data = predictTest_logit2$hat_default, reference=predictTest_logit2$Default)
 
 
 # Predicción Kaggle LOGIT -------------------------------------------------
@@ -137,6 +147,14 @@ test_logit1 <- test %>% #organizo el csv para poder cargarlo en kaggle
 test_logit1$pobre <- ifelse(test_logit1$pobre == "No", 0, 1)
 head(test_logit1) #evalúo que la base esté correctamente creada
 write.csv(test_logit1,"../stores/test_logit1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+# Exporto la predicción en csv para cargar en Kaggle
+test$pobre <- predict(logit2, newdata = test) #adaptamos 
+test_logit2 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_logit2$pobre <- ifelse(test_logit2$pobre == "No", 0, 1)
+head(test_logit2) #evalúo que la base esté correctamente creada
+write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
 

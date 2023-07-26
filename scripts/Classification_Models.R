@@ -191,7 +191,7 @@ mylogit_knn <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                      data = train, 
                      method = "knn",
                      trControl = ctrl,
-                     tuneGrid = expand.grid(k=c(3,5,7,9,11)))
+                     tuneGrid = expand.grid(k=c(3,5,7,9,11))) #el mejor fue el 11
 
 
 mylogit_knn

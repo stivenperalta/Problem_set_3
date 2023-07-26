@@ -40,8 +40,6 @@ numeric_train <- train %>% select_if(is.numeric) #separamos las numericas
 numeric_train <- ungroup(numeric_train) %>% select(-id)
 
 cor_matrix <- cor(numeric_train) #calculamos correlacion
-
-# Print the correlation matrix
 print(cor_matrix)
 
 # LOGIT  -------------------------------------------------------------------
@@ -169,10 +167,13 @@ write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predi
 
 
 # LDA -------------------------------------
-lda_1 = train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
-              + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
-              + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
-              +ocupado + desocupado+ inactivo, 
+
+set.seed(1234)
+
+lda_1 = train(pobre~cuartos_hog+ nper+Li #saco npersug y cuartos hogar porque tiene muy alta correlacion con nper
+              + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+              + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ otro_trab
+              +ocupado, 
               data=train, 
               method="lda",
               trControl = ctrl,
@@ -180,8 +181,16 @@ lda_1 = train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
 
 lda_1
 
+# Exporto la predicción en csv para cargar en Kaggle
+test$pobre <- predict(lda_1, newdata = test) #adaptamos 
+test_lda <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_lda$pobre <- ifelse(test_lda$pobre == "No", 0, 1)
+head(test_lda) #evalúo que la base esté correctamente creada
+write.csv(test_lda,"../stores/lda1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-head(credit)
+
+
 
 # KNN ---------------------------------------------------------------------
 
@@ -207,7 +216,6 @@ head(test_knn) #evalúo que la base esté correctamente creada
 write.csv(test_knn,"../stores/knn1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
-
 # Resultados de tune grid -------------------------------------------------
 
 #LOGIT
@@ -218,3 +226,18 @@ alpha lambda
 #KNN
 Accuracy was used to select the optimal model using the largest value.
 The final value used for the model was k = 11.
+
+#LDA1
+Linear Discriminant Analysis 
+
+164960 samples
+12 predictor
+2 classes: 'No', 'Si' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 148464, 148464, 148463, 148465, 148465, 148464, ... 
+Resampling results:
+  
+  Accuracy   Kappa   
+0.8268247  0.360719

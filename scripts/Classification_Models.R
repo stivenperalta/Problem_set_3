@@ -19,7 +19,6 @@ test<-readRDS("../stores/test_final.rds")
 train<-readRDS("../stores/train_final.rds")
 
 #vemos variables
-names(test)
 names(train)
 
 #renombramos variable Pobre a pobre
@@ -28,14 +27,11 @@ test <- test %>%
 train <- train %>%
   rename(pobre=Pobre)
 
-table(train$pobre)
+table(train$pobre) #los datos estan desbalanceados
 glimpse(train)
 
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
-
 train$pobre <- factor(train$pobre, levels = c("0", "1"), labels = c("No", "Si"))
-
-
 
 # LOGIT  -------------------------------------------------------------------
 
@@ -50,13 +46,16 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
 set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0, 1, 0.1), # iremos variando los valores
-                                   lambda = seq(0, 100, 1)) # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.8, 1, 0.1), # iremos variando los valores
+                                   lambda = seq(0, 5, 1)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
 
-logit1 <- train(pobre~., #especifico mi formula. primero utilizaremos todos los predictores "."
+logit1 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
+                + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+                + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
+                +ocupado + desocupado+ inactivo + IngresoPerCapita, #especifico mi formula. primero utilizaremos todos los predictores "."
                 data = train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
@@ -64,6 +63,13 @@ logit1 <- train(pobre~., #especifico mi formula. primero utilizaremos todos los 
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"
 )
+
+#para tune
+plot(logit1$results$lambda,
+     logit1$results$Accuracy,
+     xlab="lambda",
+     ylab="Accuracy")
+
 
 logit2 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
                   arriendo_aprox+arriendo_real+Nper+Lp,

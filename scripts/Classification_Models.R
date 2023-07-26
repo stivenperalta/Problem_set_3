@@ -32,6 +32,8 @@ glimpse(train)
 
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
 train$pobre <- factor(train$pobre, levels = c("0", "1"), labels = c("No", "Si"))
+test$pobre <- factor(test$pobre, levels = c("0", "1"), labels = c("No", "Si"))
+
 
 # LOGIT  -------------------------------------------------------------------
 
@@ -46,8 +48,8 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
 set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.8, 1, 0.1), # iremos variando los valores
-                                   lambda = seq(0, 5, 1)) # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.85, 0.87, 0.01), # iremos variando los valores
+                                   lambda = seq(0, 0.1, 0.01)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
@@ -55,7 +57,7 @@ colnames(hyperparameter_grid) <- c("alpha", "lambda")
 logit1 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
                 + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
-                +ocupado + desocupado+ inactivo + IngresoPerCapita, #especifico mi formula. primero utilizaremos todos los predictores "."
+                +ocupado + desocupado+ inactivo, #especifico mi formula. primero utilizaremos todos los predictores "."
                 data = train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
@@ -71,9 +73,11 @@ plot(logit1$results$lambda,
      ylab="Accuracy")
 
 
-logit2 <- train(pobre~Dominio+cuartos+habitaciones+estado+amortizacion+ #especifico mi formula, dejo los que pueden crear multicolinealidad
-                  arriendo_aprox+arriendo_real+Nper+Lp,
-                data = hogares,
+logit2 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
+                + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+                + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
+                +ocupado + desocupado+ inactivo,
+                data = train,
                 metric="F1 Score",
                 method = "glmnet",
                 trControl = ctrl,
@@ -91,6 +95,11 @@ logit2$bestTune
 logit1
 logit2
 
+
+
+# Cambiando cortes para Logit ---------------------------------------------
+
+
 #Thresholds para el corte
 thresholds <-seq(0.1,0.9,0.1)
 comparison<-list() #para guardar los predicted class de cada threshold
@@ -99,14 +108,14 @@ comparison<-list() #para guardar los predicted class de cada threshold
 
 for (threshold in thresholds) {
   pred_probs<- predict(logit1, newdata=train, type="prob")
-  pred_label<- ifelse(predicted_probs[,"1"]>=threshold,1,0) #creamos labels basado en los diferentes thresholds
-  comparison<-confusionMatrix(data=factor(pred_label), reference=factor(train$pobre))
-  comparison[[as.character(threshold)]]<-comparison
-  }
+  pred_label<- ifelse(pred_probs[,1]>=threshold,1,0) #creamos labels basado en los diferentes thresholds
+  pred_label <- factor(pred_label, levels = levels(train$pobre))  # Ensure both have the same levels
+  comparison[[as.character(threshold)]] <- confusionMatrix(data = pred_label, reference = factor(train$pobre))
+}
 
 
 predictTest_logit <- data.frame(
-  obs = hogares$pobre,                    ## observed class labels
+  obs = train$pobre,                    ## observed class labels
   predict(logit1, type = "prob"),         ## predicted class probabilities
   pred = predict(logit1, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
@@ -118,12 +127,14 @@ head(predictTest_logit2)
 confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
 
 
-#Predicción Kaggle LOGIT
+# Predicción Kaggle LOGIT -------------------------------------------------
+
 
 # Exporto la predicción en csv para cargar en Kaggle
 test$pobre <- predict(logit1, newdata = test) #adaptamos 
 test_logit1 <- test %>% #organizo el csv para poder cargarlo en kaggle
   select(id,pobre)
+test_logit1$pobre <- ifelse(test_logit1$pobre == "No", 0, 1)
 head(test_logit1) #evalúo que la base esté correctamente creada
 write.csv(test_logit1,"../stores/test_logit1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
@@ -167,3 +178,10 @@ mylogit_knn <- train(Default~duration+amount+installment+age+
 
 
 mylogit_knn
+
+
+# Resultados de tune grid -------------------------------------------------
+
+#LOGIT
+alpha lambda
+37  0.86      0

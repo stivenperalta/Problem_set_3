@@ -9,6 +9,9 @@ rm(list = ls()) # Limpiar Rstudio
 pacman::p_load(ggplot2, #gráficas
                tidyverse, #limpieza
                caret, #modelos
+               parallel, # conocer los cores de mi pc
+               doParallel, # maximizar el procesamiento en r en función de los cores de mi pc
+               ranger,
                dplyr, tidyr, glmnet, pROC) # Cargar paquetes requeridos
 
 #Definir el directorio
@@ -16,208 +19,170 @@ path_script<-rstudioapi::getActiveDocumentContext()$path
 path_folder<-dirname(path_script) 
 setwd(path_folder)
 getwd()
+rm(path_folder, path_script)
+
+# maximizo el procesamiento de r
+detectCores() # detecta los cores del computador
+registerDoParallel(6) # 6 de 8 cores de mi computador para R
+getDoParWorkers() # verifico el número de cores usados por R
 
 #vemos que hay en el directorio de stores
 dir("../stores")
 
+#Importamos las bases
 test<-readRDS("../stores/test_final.rds")
 train<-readRDS("../stores/train_final.rds")
 
-#vemos variables
-names(train)
+glimpse(train) # visualizamos los datos
 
-#renombramos variable Pobre a pobre
+#renombramos variable Pobre a pobre (para poder cargarla en kaggle)
 test <- test %>%
   rename(pobre = Pobre)
 train <- train %>%
   rename(pobre=Pobre)
 
 table(train$pobre) #los datos estan desbalanceados
-glimpse(train)
 
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
-train$pobre <- factor(train$pobre, levels = c("0", "1"), labels = c("No", "Si"))
-test$pobre <- factor(test$pobre, levels = c("0", "1"), labels = c("No", "Si"))
+train$pobre <- factor(train$pobre, levels = c("0", "1"),
+                                    labels = c("No", "Si"))
+test$pobre <- factor(test$pobre, levels = c("0", "1"),
+                                  labels = c("No", "Si"))
+
+# selecciono variables de mayor interés
+train_1 <- select(train, c(1:9, 13:23, 25:48))
+test_1 <- select(test, c(1:9, 13:23, 25:48))
 
 
-# LOGIT  -------------------------------------------------------------------
+# modelos de bagging, Random Forest y boosting ---------------------------------
 
-#Logit
-ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
-                    number = 10, #mejor 10. no sirve para dato espaciales
-                    classProbs = TRUE, #probabilidad de las clases en lugar de raw predicciones
-                    verbose=FALSE,
-                    savePredictions = T) #que guarde las predicciones
+# Creo control por valicación cruzada
+cv<-trainControl(method="cv",
+                 number=5,
+                 classProbs=TRUE, #retorna la probabilidad de cada una de las clases
+                 verbose=TRUE, #
+                 savePredictions=T) #que guarde las predicciones
 
-ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
-                     number = 10, #mejor 10. no sirve para dato espaciales
-                     classProbs = TRUE, #probabilidad de las clases en lugar de raw predicciones
-                     verbose=FALSE,
-                     savePredictions = T,
-                     summaryFunction = twoClassSummary
+#creo la grilla
+tunegrid_rf <- expand.grid(
+  min.node.size = seq(c(135,145,length.out=5)), # controla la profundidad del árbol
+  mtry = c(25, 26), #sqrt de variables # es el número de predictores (si los toma todos es bagging; solo un subconjunto es random forest)
+  splitrule = "gini" # empleamos el índice de gini como regla de partición
 )
 
-set.seed(2023)
-
-#hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.85, 0.87, 0.01), # iremos variando los valores
-                                   lambda = seq(0, 0.1, 0.01)) # iremos variando los valores
-
-
-colnames(hyperparameter_grid) <- c("alpha", "lambda")
-
-logit1 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
-                + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
-                + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
-                +ocupado + desocupado+ inactivo, #especifico mi formula. primero utilizaremos todos los predictores "."
-                data = train,
-                metric="Accuracy", #metrica de performance
-                method = "glmnet", #logistic regression with elastic net regularization
-                trControl = ctrl,
-                tuneGrid = hyperparameter_grid,
-                family= "binomial"
-)
-
-#para tune logit1
-plot(logit1$results$lambda,
-     logit1$results$Accuracy,
-     xlab="lambda",
-     ylab="Accuracy")
-
-
-logit2 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
-                + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
-                + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
-                +ocupado + desocupado+ inactivo,
-                data = train,
-                metric="ROC",
-                method = "glmnet",
-                trControl = ctrl2,
-                tuneGrid = hyperparameter_grid,
-                tuneLength= 10,
-                family= "binomial",
-)
-
-#para tune logit2
-plot(logit2$results$lambda,
-     logit2$results$Accuracy,
-     xlab="lambda",
-     ylab="Accuracy")
-
-
-# LOGIT BESTUNES ----------------------------------------------------------
-
-#Adaptamos hiperparámetros en base a esto
-logit1$bestTune
-logit2$bestTune
-
-logit1
-logit2
-
-
-
-# Cambiando cortes para Logit ---------------------------------------------
-
-
-
-predictTest_logit <- data.frame(
-  obs = train$pobre,                    ## observed class labels
-  predict(logit1, type = "prob"),         ## predicted class probabilities
-  pred = predict(logit1, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
-)
-
-
-predictTest_logit2 <- data.frame(
-  obs = train$pobre,                    ## observed class labels
-  predict(logit2, type = "prob"),         ## predicted class probabilities
-  pred = predict(logit2, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
+mod_rf_1 <- train(
+  pobre ~ . - id - IngresoPerCapita,
+  data = train_1,
+  method = "ranger", 
+  trControl = cv,
+  maximize = F,
+  metric = "Accuracy"
 )
 
 
 
-head(predictTest_logit)
-head(predictTest_logit2)
-
-confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
-confusionMatrix(data = predictTest_logit2$hat_default, reference=predictTest_logit2$Default)
-
-
-# Predicción Kaggle LOGIT -------------------------------------------------
-
-
-# Exporto la predicción en csv para cargar en Kaggle
-test$pobre <- predict(logit1, newdata = test) #adaptamos 
-test_logit1 <- test %>% #organizo el csv para poder cargarlo en kaggle
-  select(id,pobre)
-test_logit1$pobre <- ifelse(test_logit1$pobre == "No", 0, 1)
-head(test_logit1) #evalúo que la base esté correctamente creada
-write.csv(test_logit1,"../stores/test_logit1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
-
-# Exporto la predicción en csv para cargar en Kaggle
-test$pobre <- predict(logit2, newdata = test) #adaptamos 
-test_logit2 <- test %>% #organizo el csv para poder cargarlo en kaggle
-  select(id,pobre)
-test_logit2$pobre <- ifelse(test_logit2$pobre == "No", 0, 1)
-head(test_logit2) #evalúo que la base esté correctamente creada
-write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
 
 
-# LDA -------------------------------------
-lda_fit = train(Default~duration+amount+installment+age, 
-                data=train, 
-                method="lda",
-                trControl = ctrl)
-
-lda_fit
-
-
-head(credit)
 
 
 
-# QDA-----------------------------------------------------------
 
-qda_fit= train(Default~duration+amount+installment+age,
-               data=train,
-               method="qda",
-               trControl= ctrl)
+#creo la grilla
+tunegrid_rf <- expand.grid(
+  min.node.size = seq(c(135,145,length.out=5)), # inicial c(3000, 6000, 9000, 12000)
+  mtry = c(25, 26), #sqrt de variables #inicial c(6, 12, 18)
+  splitrule = c("variance")
+)
 
-qda_fit #empeoró el accuracy
+# Creo el modelo 11 de predicciónCreo con random forest
+modelo11rf <- train(
+  price ~ .,
+  data = train,
+  method = "ranger", 
+  trControl = fitcontrol_localidad,
+  maximize = F,
+  metric = "MAE",
+  tuneGrid = tunegrid_rf # bestTune = alpha  0.55 lambda 31446558
+)
 
-# KNN ---------------------------------------------------------------------
+round(modelo11rf$results$MAE[which.min(modelo11rf$results$mtry)],3) #Evalúo el error de predicción de ese lambda
+modelo11rf$bestTune # evaluar el mejor alpha y lambda
+plot(modelo11rf, xvar = "lambda") # Grafico el error MAE
+plot(modelo1rf) # observo gráficamente los resultados
+fancyRpartPlot(modelo11rf$finalModel) # grafico el árbol (librería rattle)
 
-set.seed(2009)
-mylogit_knn <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
-                     + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
-                     + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
-                     +ocupado + desocupado+ inactivo, 
-                     data = train, 
-                     method = "knn",
-                     trControl = ctrl,
-                     tuneGrid = expand.grid(k=c(3,5,7,9,11))) #el mejor fue el 11
+#predigo el resultado en mi test
+test_data$price <- predict(modelo11rf, newdata = test_data)
+test9 <- test_data %>% #organizo el csv para poder cargarlo en kaggle
+  st_drop_geometry() %>% 
+  select(property_id,price) %>% 
+  mutate(price = round(price / 10000000) * 10000000) # redondeo valores a múltiplos de 10 millones
+head(test9) #evalúo que la base esté correctamente creada
+write.csv(test9,"../stores/spatial_random_forest.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-
-mylogit_knn
-
-# Exporto la predicción en csv para cargar en Kaggle
-test$pobre <- predict(mylogit_knn, newdata = test) #adaptamos 
-test_knn <- test %>% #organizo el csv para poder cargarlo en kaggle
-  select(id,pobre)
-test_knn$pobre <- ifelse(test_knn$pobre == "No", 0, 1)
-head(test_knn) #evalúo que la base esté correctamente creada
-write.csv(test_knn,"../stores/knn1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
-
-
-
-# Resultados de tune grid -------------------------------------------------
-
-#LOGIT
-alpha lambda
-37  0.86      0
+# Creo el modelo 14 de predicciónCreo con random forest
+modelo14rf_barrio <- train(
+  price ~ .,
+  data = train,
+  method = "ranger", 
+  trControl = fitcontrol_barrio,
+  maximize = F,
+  metric = "MAE",
+  tuneGrid = tunegrid_rf 
+)
 
 
-#KNN
-Accuracy was used to select the optimal model using the largest value.
-The final value used for the model was k = 11.
+# Creo el modelo 12 de predicción con boosting
+
+#creo la grilla
+tunegrid_boosting <- expand.grid(
+  mtry = c(25),
+  splitrule = c("extratrees"),
+  min.node.size = c(135, 136)
+)
+
+modelo12boosting <- train(
+price ~ .,
+data = train,
+method = "ranger", 
+trControl = fitcontrol_barrio,
+maximize = F,
+metric = "MAE",
+tuneGrid = tunegrid_boosting # bestTune = alpha  0.55 lambda 31446558
+)
+
+round(modelo12boosting$results$MAE[which.min(modelo12boosting$results$MAE)],3) #Evalúo el error de predicción de ese lambda
+mean(train$price)
+modelo12boosting$bestTune # evaluar el mejor alpha y lambda
+plot(modelo12boosting, xvar = "lambda") # Grafico el error MAE
+plot(modelo12boosting) # observo gráficamente los resultados
+fancyRpartPlot(modelo12boosting$finalModel) # grafico el árbol (librería rattle)
+
+#predigo el resultado en mi test
+test_data$price <- predict(modelo12boosting, newdata = test_data)
+test10_1 <- test_data %>% #organizo el csv para poder cargarlo en kaggle
+  st_drop_geometry() %>% 
+  select(property_id,price) %>% 
+  mutate(price = round(price / 10000000) * 10000000) # redondeo valores a múltiplos de 10 millones
+head(test10_1) #evalúo que la base esté correctamente creada
+write.csv(test10_1,"../stores/spatial_boosting_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+# modelo 13 bagging
+library(ipred)
+
+modelo_bagging <- bagging(
+  formula = price ~ .,
+  data = train,
+  nbagg = 1000,
+  trControl = tunegrid_rf,
+  coob = TRUE
+)
+
+mean(train$price)
+modelo_bagging$err # evaluar el err
+y_hat_price_bagging <- predict(modelo_bagging, test_data) # Predicción del precio con el modelo1
+require("Metrics")
+mae(y_hat_price_bagging, train$price) # se evalúa en la unidad de medida de price (y) es decir, en promedio, mi modelo se desacacha en x unidades de medida
+

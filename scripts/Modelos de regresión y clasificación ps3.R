@@ -12,7 +12,7 @@ pacman::p_load(ggplot2, #gráficas
                parallel, # conocer los cores de mi pc
                doParallel, # maximizar el procesamiento en r en función de los cores de mi pc
                ranger,
-               dplyr, tidyr, glmnet, pROC) # Cargar paquetes requeridos
+               dplyr, tidyr, glmnet, pROC, randomForest) # Cargar paquetes requeridos
 
 #Definir el directorio
 path_script<-rstudioapi::getActiveDocumentContext()$path
@@ -65,7 +65,8 @@ summary(train)
 
 # Creo control por valicación cruzadamod_fr_1$bestTune
 cv<-trainControl(method="cv",
-                 number=5,
+                 number=5)
+
                  classProbs=TRUE, #retorna la probabilidad de cada una de las clases
                  verbose=TRUE, #
                  savePredictions=T) #que guarde las predicciones
@@ -81,14 +82,13 @@ tunegrid_rf <- expand.grid(
 mod_rf_1 <- train(
 IngresoPerCapita ~ . - id - pobre -Li -Lp,
   data = train,
-  method = "ranger", 
-  trControl = cv,
-  maximize = F
+  method = "rpart", 
+  trControl = cv
 )
 
 # random forest clasificación
 mod_rf_1 <- train(
-  IngresoPerCapita ~ . - id - pobre -Li -Lp,
+  pobre ~ . - id - IngresoPerCapita -Li -Lp,
   data = train,
   method = "ranger", 
   trControl = cv,

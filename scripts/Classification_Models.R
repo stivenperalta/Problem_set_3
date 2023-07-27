@@ -62,7 +62,7 @@ ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cr
 set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.85, 0.86, 0.01), # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.865, 0.01), # iremos variando los valores
                                    lambda = seq(0, 0.02, 0.001)) # iremos variando los valores
 
 
@@ -109,12 +109,38 @@ plot(logit2$results$lambda,
      ylab="Accuracy")
 
 #LOGIT3
+
+#creo iteracciones
+train <- train %>%
+  mutate(
+    int1 = v.cabecera * Jefe_mujer,
+    int2 = d_arriendo * Jefe_mujer,
+    int3 = Tipodevivienda * Jefe_mujer,
+    int4 = edad * Jefe_mujer,
+    int5 = Nivel_educativo * Jefe_mujer,
+    int6= otro_trab * Jefe_mujer,
+    int7 = fondo_pensiones * Jefe_mujer,
+    int8 = ocupado * Jefe_mujer
+  )
+
+test <- test %>%
+  mutate(
+    int1 = v.cabecera * Jefe_mujer,
+    int2 = d_arriendo * Jefe_mujer,
+    int3 = Tipodevivienda * Jefe_mujer,
+    int4 = edad * Jefe_mujer,
+    int5 = Nivel_educativo * Jefe_mujer,
+    int6= otro_trab * Jefe_mujer,
+    int7 = fondo_pensiones * Jefe_mujer,
+    int8 = ocupado * Jefe_mujer
+  )
+
 set.seed(2023)
-logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera+ v.cabecera*Jefe_mujer+cuartos_hog + nper
-                + d_arriendo + Jefe_mujer+ d_arriendo*Jefe_mujer+ PersonaxCuarto+ Tipodevivienda + Tipodevivienda*Jefe_mujer
-                + Educacion_promedio +edad+ edad*Jefe_mujer + seg_soc+ Nivel_educativo+ Nivel_educativo*Jefe_mujer+ Tipo_de_trabajo
-                +otro_trab +otro_trab*Jefe_mujer
-                + fondo_pensiones + fondo_pensiones*Jefe_mujer +ocupado + ocupado*Jefe_mujer, #especifico mi formula. primero utilizaremos todos los predictores "."
+logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
+                + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+                + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
+                +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
+                +int5 +int6+ int7 + int8, #especifico mi formula. primero utilizaremos todos los predictores "."
                 data = train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
@@ -122,6 +148,8 @@ logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera+ v.cabecera*Jefe_mujer+c
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"
 )
+
+
 
 #para tune logit3
 plot(logit3$results$lambda,

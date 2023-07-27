@@ -271,8 +271,8 @@ write.csv(test_logit3,"../stores/logit3.csv",row.names=FALSE) # Exporto la predi
 
 # LDA -------------------------------------
 
+#LDA1
 set.seed(1234)
-
 lda_1 = train(pobre~cuartos_hog+ nper+Li #saco npersug y cuartos hogar porque tiene muy alta correlacion con nper
               + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
               + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ otro_trab
@@ -284,18 +284,21 @@ lda_1 = train(pobre~cuartos_hog+ nper+Li #saco npersug y cuartos hogar porque ti
 
 lda_1
 
-lda_2= train(pobre~Porcentaje_ocupados+ + v.cabecera+ cuartos_hog + nper
-             + d_arriendo + Jefe_mujer+ d_arriendo*Jefe_mujer+ PersonaxCuarto+ Tipodevivienda + Tipodevivienda*Jefe_mujer
-             + Educacion_promedio +edad+ edad*Jefe_mujer + seg_soc+ Nivel_educativo+ Nivel_educativo*Jefe_mujer+ Tipo_de_trabajo
-             +otro_trab +otro_trab*Jefe_mujer
-             + fondo_pensiones + fondo_pensiones*Jefe_mujer +ocupado + ocupado*Jefe_mujer, 
-             data=train, 
-             method="lda",
-             trControl = ctrl,
-             metric="Accuracy")
+#LDA2
+set.seed(2023)
+lda_2 <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper + d_arriendo +
+                 Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio + edad + 
+                 seg_soc + Nivel_educativo + Tipo_de_trabajo +
+                 ocupado + int1 + int2 + int3 + int4 + int5 + int6+ int7+ int8, #se sacan int6 y int7 porque tienen near zero variance (constant_vars <- nearZeroVar(train, saveMetrics = TRUE) )
+               data = train,
+               method = "lda",
+               trControl = ctrl,
+               metric = "Accuracy")
 
 
 # Exporto la predicción en csv para cargar en Kaggle
+
+#LDA1
 test$pobre <- predict(lda_1, newdata = test) #adaptamos 
 test_lda <- test %>% #organizo el csv para poder cargarlo en kaggle
   select(id,pobre)
@@ -303,7 +306,7 @@ test_lda$pobre <- ifelse(test_lda$pobre == "No", 0, 1)
 head(test_lda) #evalúo que la base esté correctamente creada
 write.csv(test_lda,"../stores/lda1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-
+#LDA2
 
 
 # KNN ---------------------------------------------------------------------

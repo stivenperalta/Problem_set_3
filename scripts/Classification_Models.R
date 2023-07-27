@@ -115,9 +115,7 @@ logit2$bestTune
 logit1
 logit2
 
-
-
-# Cambiando cortes para Logit ---------------------------------------------
+# LOGIT Confusion Matrix y cambiando cutoffs ---------------------------------------------
 
 
 #Logit1
@@ -154,7 +152,7 @@ legend("bottomright", legend = c("Sensitivity", "Specificity"), col = c("red", "
 
 #Nueva matiz
 predicted_probabilities <- predictTest_logit2$Si
-new_cutoff<-0.25
+new_cutoff<-0.35
 predictTest_logit2$new_thres <- factor(ifelse(predicted_probabilities > new_cutoff, "Si", "No"))
 
 confusionMatrix(data = predictTest_logit2$new_thres, reference=predictTest_logit2$obs)
@@ -188,10 +186,12 @@ write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predi
 
 #Exporto prediccion con logit 2 pero con corte de 2.5
 test$pobre <- predict(logit2, newdata = test, type="prob") #adaptamos 
+test$pobre <- test$pobre$Si
+test$pobre <- as.factor(ifelse(test$pobre > 0.35, "Si", "No"))
 test_logit2_1 <- test %>% #organizo el csv para poder cargarlo en kaggle
   select(id,pobre)
 test_logit2_1$pobre <- ifelse(test_logit2_1$pobre == "No", 0, 1)
-head(test_logit2) #evalúo que la base esté correctamente creada
+head(test_logit2_1) #evalúo que la base esté correctamente creada
 write.csv(test_logit2_1,"../stores/logit2_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
@@ -317,6 +317,32 @@ Mcnemar's Test P-Value : < 2.2e-16
        'Positive' Class : No  ' 
 
 #Logit 2.1- con cutoff en 2.5
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 108651   7692
+Si  23285  25332
+
+Accuracy : 0.8122          
+95% CI : (0.8103, 0.8141)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.5018          
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.8235          
+            Specificity : 0.7671          
+         Pos Pred Value : 0.9339          
+         Neg Pred Value : 0.5211          
+             Prevalence : 0.7998          
+         Detection Rate : 0.6587          
+   Detection Prevalence : 0.7053          
+      Balanced Accuracy : 0.7953          
+                                          
+       'Positive' Class : No  ' 
 
 #KNN
 Accuracy was used to select the optimal model using the largest value.

@@ -62,8 +62,8 @@ ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cr
 set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.85, 0.87, 0.01), # iremos variando los valores
-                                   lambda = seq(0, 0.1, 0.01)) # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.865, 0.01), # iremos variando los valores
+                                   lambda = seq(0, 0.05, 0.001)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
@@ -86,18 +86,17 @@ plot(logit1$results$lambda,
      xlab="lambda",
      ylab="Accuracy")
 
-
-logit2 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
+set.seed(2023)
+logit2 <- train(pobre~Porcentaje_ocupados+ + v.cabecera+ cuartos_hog + nper+ npersug
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
-                + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
-                +ocupado + desocupado+ inactivo,
+                + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo+otro_trab
+                + fondo_pensiones +ocupado, #especifico mi formula. primero utilizaremos todos los predictores "."
                 data = train,
-                metric="ROC",
-                method = "glmnet",
-                trControl = ctrl2,
+                metric="Accuracy", #metrica de performance
+                method = "glmnet", #logistic regression with elastic net regularization
+                trControl = ctrl,
                 tuneGrid = hyperparameter_grid,
-                tuneLength= 10,
-                family= "binomial",
+                family= "binomial"
 )
 
 #para tune logit2
@@ -121,28 +120,52 @@ logit2
 # Cambiando cortes para Logit ---------------------------------------------
 
 
-
+#Logit1
 predictTest_logit <- data.frame(
   obs = train$pobre,                    ## observed class labels
   predict(logit1, type = "prob"),         ## predicted class probabilities
   pred = predict(logit1, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
 
+head(predictTest_logit)
 
+confusionMatrix(data = predictTest_logit$pred, reference=predictTest_logit$obs)
+
+#Logit2
 predictTest_logit2 <- data.frame(
   obs = train$pobre,                    ## observed class labels
   predict(logit2, type = "prob"),         ## predicted class probabilities
   pred = predict(logit2, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
 
-
-
-head(predictTest_logit)
 head(predictTest_logit2)
 
-confusionMatrix(data = predictTest_logit$hat_default, reference=predictTest_logit$Default)
-confusionMatrix(data = predictTest_logit2$hat_default, reference=predictTest_logit2$Default)
+confusionMatrix(data = predictTest_logit2$pred, reference=predictTest_logit2$obs)
 
+#Evaluando los cortes/thresholds
+roc_data <- roc(predictTest_logit2$obs, predictTest_logit2$Si)
+plot(roc_data, main = "ROC Curve", col = "purple", lwd = 2) #vemos nuestra curva ROC. Estamos muy alto en sensitivity y bajo en specificity
+mycoords <- coords(roc_data, "all")
+
+plot(mycoords$threshold, mycoords$sensitivity, type = "l", col = "red",
+     xlab = "Cutoff", ylab = "Sensitivity", main = "Sensitivity vs. Cutoff")
+lines(mycoords$threshold, mycoords$specificity, col = "blue")
+legend("bottomright", legend = c("Sensitivity", "Specificity"), col = c("red", "blue"), lwd = 2)
+
+#Nueva matiz
+predicted_probabilities <- predictTest_logit2$Si
+new_cutoff<-0.25
+predictTest_logit2$new_thres <- factor(ifelse(predicted_probabilities > new_cutoff, "Si", "No"))
+
+confusionMatrix(data = predictTest_logit2$new_thres, reference=predictTest_logit2$obs)
+
+
+#Calculando Youden J statistic
+#Youden's J = Sensitivity + Specificity - 1
+#youden_j <- mycoords$sensitivities + mycoords$specificities - 1
+#optimal_threshold <- mycoords$thresholds[which.max(youden_j)]
+
+#optimal_threshold
 
 # Predicción Kaggle LOGIT -------------------------------------------------
 
@@ -162,6 +185,15 @@ test_logit2 <- test %>% #organizo el csv para poder cargarlo en kaggle
 test_logit2$pobre <- ifelse(test_logit2$pobre == "No", 0, 1)
 head(test_logit2) #evalúo que la base esté correctamente creada
 write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+#Exporto prediccion con logit 2 pero con corte de 2.5
+test$pobre <- predict(logit2, newdata = test, type="prob") #adaptamos 
+test_logit2_1 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_logit2_1$pobre <- ifelse(test_logit2_1$pobre == "No", 0, 1)
+head(test_logit2) #evalúo que la base esté correctamente creada
+write.csv(test_logit2_1,"../stores/logit2_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
 
 
 
@@ -219,9 +251,72 @@ write.csv(test_knn,"../stores/knn1.csv",row.names=FALSE) # Exporto la predicció
 # Resultados de tune grid -------------------------------------------------
 
 #LOGIT
+
+#Logit 1
 alpha lambda
 37  0.86      0
 
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 125412  21862
+Si   6524  11162
+
+Accuracy : 0.8279          
+95% CI : (0.8261, 0.8297)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.3494          
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9506          
+            Specificity : 0.3380          
+         Pos Pred Value : 0.8516          
+         Neg Pred Value : 0.6311          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7603          
+   Detection Prevalence : 0.8928          
+      Balanced Accuracy : 0.6443          
+                                          
+       'Positive' Class : No  ' 
+
+#Logit2
+
+> logit2$bestTune
+   alpha lambda
+53 0.865  0.001
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 124452  16688
+Si   7484  16336
+
+Accuracy : 0.8535          
+95% CI : (0.8518, 0.8552)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.489           
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9433          
+            Specificity : 0.4947          
+         Pos Pred Value : 0.8818          
+         Neg Pred Value : 0.6858          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7544          
+   Detection Prevalence : 0.8556          
+      Balanced Accuracy : 0.7190          
+                                          
+       'Positive' Class : No  ' 
+
+#Logit 2.1- con cutoff en 2.5
 
 #KNN
 Accuracy was used to select the optimal model using the largest value.

@@ -62,12 +62,14 @@ ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cr
 set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.865, 0.01), # iremos variando los valores
-                                   lambda = seq(0, 0.05, 0.001)) # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.85, 0.86, 0.01), # iremos variando los valores
+                                   lambda = seq(0, 0.02, 0.001)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
 
+#LOGIT1
+set.seed(2023)
 logit1 <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
                 + Educacion_promedio + sexo +edad+ seg_soc+ Nivel_educativo+ otro_trab
@@ -86,6 +88,7 @@ plot(logit1$results$lambda,
      xlab="lambda",
      ylab="Accuracy")
 
+#LOGIT2
 set.seed(2023)
 logit2 <- train(pobre~Porcentaje_ocupados+ + v.cabecera+ cuartos_hog + nper+ npersug
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
@@ -105,15 +108,38 @@ plot(logit2$results$lambda,
      xlab="lambda",
      ylab="Accuracy")
 
+#LOGIT3
+set.seed(2023)
+logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera+ v.cabecera*Jefe_mujer+cuartos_hog + nper
+                + d_arriendo + Jefe_mujer+ d_arriendo*Jefe_mujer+ PersonaxCuarto+ Tipodevivienda + Tipodevivienda*Jefe_mujer
+                + Educacion_promedio +edad+ edad*Jefe_mujer + seg_soc+ Nivel_educativo+ Nivel_educativo*Jefe_mujer+ Tipo_de_trabajo
+                +otro_trab +otro_trab*Jefe_mujer
+                + fondo_pensiones + fondo_pensiones*Jefe_mujer +ocupado + ocupado*Jefe_mujer, #especifico mi formula. primero utilizaremos todos los predictores "."
+                data = train,
+                metric="Accuracy", #metrica de performance
+                method = "glmnet", #logistic regression with elastic net regularization
+                trControl = ctrl,
+                tuneGrid = hyperparameter_grid,
+                family= "binomial"
+)
+
+#para tune logit3
+plot(logit3$results$lambda,
+     logit3$results$Accuracy,
+     xlab="lambda",
+     ylab="Accuracy")
+
 
 # LOGIT BESTUNES ----------------------------------------------------------
 
 #Adaptamos hiperparámetros en base a esto
 logit1$bestTune
 logit2$bestTune
+logit3$bestTune
 
 logit1
 logit2
+logit3
 
 # LOGIT Confusion Matrix y cambiando cutoffs ---------------------------------------------
 
@@ -157,6 +183,17 @@ predictTest_logit2$new_thres <- factor(ifelse(predicted_probabilities > new_cuto
 
 confusionMatrix(data = predictTest_logit2$new_thres, reference=predictTest_logit2$obs)
 
+#Logit3
+predictTest_logit3 <- data.frame(
+  obs = train$pobre,                    ## observed class labels
+  predict(logit3, type = "prob"),         ## predicted class probabilities
+  pred = predict(logit3, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
+)
+
+head(predictTest_logit3)
+
+confusionMatrix(data = predictTest_logit3$pred, reference=predictTest_logit3$obs)
+
 
 #Calculando Youden J statistic
 #Youden's J = Sensitivity + Specificity - 1
@@ -168,7 +205,7 @@ confusionMatrix(data = predictTest_logit2$new_thres, reference=predictTest_logit
 # Predicción Kaggle LOGIT -------------------------------------------------
 
 
-# Exporto la predicción en csv para cargar en Kaggle
+# Logit1: Exporto la predicción en csv para cargar en Kaggle
 test$pobre <- predict(logit1, newdata = test) #adaptamos 
 test_logit1 <- test %>% #organizo el csv para poder cargarlo en kaggle
   select(id,pobre)
@@ -176,7 +213,7 @@ test_logit1$pobre <- ifelse(test_logit1$pobre == "No", 0, 1)
 head(test_logit1) #evalúo que la base esté correctamente creada
 write.csv(test_logit1,"../stores/test_logit1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-# Exporto la predicción en csv para cargar en Kaggle
+# Logit2: Exporto la predicción en csv para cargar en Kaggle
 test$pobre <- predict(logit2, newdata = test) #adaptamos 
 test_logit2 <- test %>% #organizo el csv para poder cargarlo en kaggle
   select(id,pobre)
@@ -184,7 +221,7 @@ test_logit2$pobre <- ifelse(test_logit2$pobre == "No", 0, 1)
 head(test_logit2) #evalúo que la base esté correctamente creada
 write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-#Exporto prediccion con logit 2 pero con corte de 2.5
+# Logit2.1: Exporto prediccion con logit 2 pero con corte de 2.5
 test$pobre <- predict(logit2, newdata = test, type="prob") #adaptamos 
 test$pobre <- test$pobre$Si
 test$pobre <- as.factor(ifelse(test$pobre > 0.35, "Si", "No"))
@@ -194,6 +231,13 @@ test_logit2_1$pobre <- ifelse(test_logit2_1$pobre == "No", 0, 1)
 head(test_logit2_1) #evalúo que la base esté correctamente creada
 write.csv(test_logit2_1,"../stores/logit2_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
+# Logit3: Exporto la predicción en csv para cargar en Kaggle
+test$pobre <- predict(logit3, newdata = test) #adaptamos 
+test_logit3 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_logit3$pobre <- ifelse(test_logit3$pobre == "No", 0, 1)
+head(test_logit3) #evalúo que la base esté correctamente creada
+write.csv(test_logit3,"../stores/logit3.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
 
@@ -212,6 +256,17 @@ lda_1 = train(pobre~cuartos_hog+ nper+Li #saco npersug y cuartos hogar porque ti
               metric="Accuracy")
 
 lda_1
+
+lda_2= train(pobre~Porcentaje_ocupados+ + v.cabecera+ cuartos_hog + nper
+             + d_arriendo + Jefe_mujer+ d_arriendo*Jefe_mujer+ PersonaxCuarto+ Tipodevivienda + Tipodevivienda*Jefe_mujer
+             + Educacion_promedio +edad+ edad*Jefe_mujer + seg_soc+ Nivel_educativo+ Nivel_educativo*Jefe_mujer+ Tipo_de_trabajo
+             +otro_trab +otro_trab*Jefe_mujer
+             + fondo_pensiones + fondo_pensiones*Jefe_mujer +ocupado + ocupado*Jefe_mujer, 
+             data=train, 
+             method="lda",
+             trControl = ctrl,
+             metric="Accuracy")
+
 
 # Exporto la predicción en csv para cargar en Kaggle
 test$pobre <- predict(lda_1, newdata = test) #adaptamos 
@@ -316,33 +371,67 @@ Mcnemar's Test P-Value : < 2.2e-16
                                           
        'Positive' Class : No  ' 
 
-#Logit 2.1- con cutoff en 2.5
+#Logit 2.1- con cutoff en 3.5
 Confusion Matrix and Statistics
 
 Reference
 Prediction     No     Si
-No 108651   7692
-Si  23285  25332
+No 116367  10977
+Si  15569  22047
 
-Accuracy : 0.8122          
-95% CI : (0.8103, 0.8141)
+Accuracy : 0.8391          
+95% CI : (0.8373, 0.8408)
 No Information Rate : 0.7998          
 P-Value [Acc > NIR] : < 2.2e-16       
 
-Kappa : 0.5018          
+Kappa : 0.5224          
 
 Mcnemar's Test P-Value : < 2.2e-16       
                                           
-            Sensitivity : 0.8235          
-            Specificity : 0.7671          
-         Pos Pred Value : 0.9339          
-         Neg Pred Value : 0.5211          
+            Sensitivity : 0.8820          
+            Specificity : 0.6676          
+         Pos Pred Value : 0.9138          
+         Neg Pred Value : 0.5861          
              Prevalence : 0.7998          
-         Detection Rate : 0.6587          
-   Detection Prevalence : 0.7053          
-      Balanced Accuracy : 0.7953          
+         Detection Rate : 0.7054          
+   Detection Prevalence : 0.7720          
+      Balanced Accuracy : 0.7748          
                                           
-       'Positive' Class : No  ' 
+       'Positive' Class : No     ' 
+
+#Logit3
+
+> logit3$bestTune
+alpha lambda
+157  0.86  0.001
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 124444  16684
+Si   7492  16340
+
+Accuracy : 0.8534          
+95% CI : (0.8517, 0.8551)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.489           
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9432          
+            Specificity : 0.4948          
+         Pos Pred Value : 0.8818          
+         Neg Pred Value : 0.6856          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7544          
+   Detection Prevalence : 0.8555          
+      Balanced Accuracy : 0.7190          
+                                          
+       'Positive' Class : No' 
+
 
 #KNN
 Accuracy was used to select the optimal model using the largest value.

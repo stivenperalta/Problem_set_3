@@ -33,30 +33,37 @@ dir("../stores")
 test<-readRDS("../stores/test_final.rds")
 train<-readRDS("../stores/train_final.rds")
 
-glimpse(train) # visualizamos los datos
-
 #renombramos variable Pobre a pobre (para poder cargarla en kaggle)
 test <- test %>%
   rename(pobre = Pobre)
 train <- train %>%
   rename(pobre=Pobre)
 
-table(train$pobre) #los datos estan desbalanceados
+prop.table(table(train$pobre)) #los datos estan desbalanceados
 
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
-train$pobre <- factor(train$pobre, levels = c("0", "1"),
-                                    labels = c("No", "Si"))
 test$pobre <- factor(test$pobre, levels = c("0", "1"),
                                   labels = c("No", "Si"))
+train$pobre <- factor(train$pobre, levels = c("0", "1"),
+                      labels = c("No", "Si"))
+#convertimos en factor
+train$Regimen_salud <- as.factor(train$Regimen_salud)
+test$Regimen_salud <- as.factor(test$Regimen_salud)
 
+train$Antiguedad_trabajo <- as.factor(train$Antiguedad_trabajo)
+test$Antiguedad_trabajo <- as.factor(test$Antiguedad_trabajo)
+
+
+names(train)
+summary(train)
 # selecciono variables de mayor interés
-train_1 <- select(train, c(1:9, 13:23, 25:48))
-test_1 <- select(test, c(1:9, 13:23, 25:48))
-
+train <- select(train, c(1:6, 13:14, 16, 17, 19:24, 26, 44, 47, 48, 8, 9))
+test <- select(test, c(1:6, 13:14, 16, 17, 19:24, 26, 44, 47, 48, 8, 9))
+summary(train)
 
 # modelos de bagging, Random Forest y boosting ---------------------------------
 
-# Creo control por valicación cruzada
+# Creo control por valicación cruzadamod_fr_1$bestTune
 cv<-trainControl(method="cv",
                  number=5,
                  classProbs=TRUE, #retorna la probabilidad de cada una de las clases
@@ -70,15 +77,26 @@ tunegrid_rf <- expand.grid(
   splitrule = "gini" # empleamos el índice de gini como regla de partición
 )
 
+# random forest regresión
 mod_rf_1 <- train(
-  pobre ~ . - id - IngresoPerCapita,
-  data = train_1,
+IngresoPerCapita ~ . - id - pobre -Li -Lp,
+  data = train,
+  method = "ranger", 
+  trControl = cv,
+  maximize = F
+)
+
+# random forest clasificación
+mod_rf_1 <- train(
+  IngresoPerCapita ~ . - id - pobre -Li -Lp,
+  data = train,
   method = "ranger", 
   trControl = cv,
   maximize = F,
   metric = "Accuracy"
 )
 
+mod_fr_1$bestTune
 
 
 
@@ -89,7 +107,6 @@ mod_rf_1 <- train(
 
 
 
-#creo la grilla
 tunegrid_rf <- expand.grid(
   min.node.size = seq(c(135,145,length.out=5)), # inicial c(3000, 6000, 9000, 12000)
   mtry = c(25, 26), #sqrt de variables #inicial c(6, 12, 18)

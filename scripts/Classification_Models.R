@@ -63,7 +63,7 @@ set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
 hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.865, 0.01), # iremos variando los valores
-                                   lambda = seq(0, 0.02, 0.001)) # iremos variando los valores
+                                   lambda = seq(0, 0.01, 0.001)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
@@ -111,29 +111,15 @@ plot(logit2$results$lambda,
 #LOGIT3
 
 #creo iteracciones
-train <- train %>%
-  mutate(
-    int1 = v.cabecera * Jefe_mujer,
-    int2 = d_arriendo * Jefe_mujer,
-    int3 = Tipodevivienda * Jefe_mujer,
-    int4 = edad * Jefe_mujer,
-    int5 = Nivel_educativo * Jefe_mujer,
-    int6= otro_trab * Jefe_mujer,
-    int7 = fondo_pensiones * Jefe_mujer,
-    int8 = ocupado * Jefe_mujer
-  )
-
-test <- test %>%
-  mutate(
-    int1 = v.cabecera * Jefe_mujer,
-    int2 = d_arriendo * Jefe_mujer,
-    int3 = Tipodevivienda * Jefe_mujer,
-    int4 = edad * Jefe_mujer,
-    int5 = Nivel_educativo * Jefe_mujer,
-    int6= otro_trab * Jefe_mujer,
-    int7 = fondo_pensiones * Jefe_mujer,
-    int8 = ocupado * Jefe_mujer
-  )
+#creando interacciones
+train$int1<- interaction(train$v.cabecera,train$Jefe_mujer)
+train$int2<- interaction(train$d_arriendo,train$Jefe_mujer)
+train$int3<- interaction(train$Tipodevivienda, train$Jefe_mujer)
+train$int4<- interaction(train$edad, train$Jefe_mujer)
+train$int5<- interaction(train$Nivel_educativo, train$Jefe_mujer)
+train$int6<- interaction(train$otro_trab, train$Jefe_mujer)
+train$int7<- interaction(train$fondo_pensiones, train$Jefe_mujer)
+train$int8<- interaction(train$ocupado, train$Jefe_mujer)
 
 set.seed(2023)
 logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
@@ -212,6 +198,8 @@ predictTest_logit2$new_thres <- factor(ifelse(predicted_probabilities > new_cuto
 confusionMatrix(data = predictTest_logit2$new_thres, reference=predictTest_logit2$obs)
 
 #Logit3
+
+
 predictTest_logit3 <- data.frame(
   obs = train$pobre,                    ## observed class labels
   predict(logit3, type = "prob"),         ## predicted class probabilities

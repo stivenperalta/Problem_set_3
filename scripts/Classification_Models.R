@@ -136,7 +136,6 @@ logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
 )
 
 
-
 #para tune logit3
 plot(logit3$results$lambda,
      logit3$results$Accuracy,
@@ -248,6 +247,18 @@ head(test_logit2_1) #evalúo que la base esté correctamente creada
 write.csv(test_logit2_1,"../stores/logit2_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 # Logit3: Exporto la predicción en csv para cargar en Kaggle
+
+#interacciones para test
+test$int1<- interaction(test$v.cabecera,test$Jefe_mujer)
+test$int2<- interaction(test$d_arriendo,test$Jefe_mujer)
+test$int3<- interaction(test$Tipodevivienda, test$Jefe_mujer)
+test$int4<- interaction(test$edad, test$Jefe_mujer)
+test$int5<- interaction(test$Nivel_educativo, test$Jefe_mujer)
+test$int6<- interaction(test$otro_trab, test$Jefe_mujer)
+test$int7<- interaction(test$fondo_pensiones, test$Jefe_mujer)
+test$int8<- interaction(test$ocupado, test$Jefe_mujer)
+
+
 test$pobre <- predict(logit3, newdata = test) #adaptamos 
 test_logit3 <- test %>% #organizo el csv para poder cargarlo en kaggle
   select(id,pobre)
@@ -419,34 +430,34 @@ Mcnemar's Test P-Value : < 2.2e-16
 
 > logit3$bestTune
 alpha lambda
-157  0.86  0.001
+23  0.86  0.001
 
 Confusion Matrix and Statistics
 
 Reference
 Prediction     No     Si
-No 124444  16684
-Si   7492  16340
+No 124467  16613
+Si   7469  16411
 
-Accuracy : 0.8534          
-95% CI : (0.8517, 0.8551)
+Accuracy : 0.854           
+95% CI : (0.8523, 0.8557)
 No Information Rate : 0.7998          
 P-Value [Acc > NIR] : < 2.2e-16       
 
-Kappa : 0.489           
+Kappa : 0.4913          
 
 Mcnemar's Test P-Value : < 2.2e-16       
                                           
-            Sensitivity : 0.9432          
-            Specificity : 0.4948          
-         Pos Pred Value : 0.8818          
-         Neg Pred Value : 0.6856          
+            Sensitivity : 0.9434          
+            Specificity : 0.4969          
+         Pos Pred Value : 0.8822          
+         Neg Pred Value : 0.6872          
              Prevalence : 0.7998          
-         Detection Rate : 0.7544          
-   Detection Prevalence : 0.8555          
-      Balanced Accuracy : 0.7190          
+         Detection Rate : 0.7545          
+   Detection Prevalence : 0.8552          
+      Balanced Accuracy : 0.7202          
                                           
-       'Positive' Class : No' 
+       'Positive' Class : No     '
 
 
 #KNN

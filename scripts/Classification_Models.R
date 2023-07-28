@@ -46,7 +46,7 @@ ggplot(data = cor_melted, aes(x = Var1, y = Var2, fill = value)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-# LOGIT  -------------------------------------------------------------------
+# TRAIN CONTROL  -------------------------------------------------------------------
 
 #Logit
 ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
@@ -56,21 +56,27 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
                     savePredictions = T) #que guarde las predicciones
 
 ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
-                     number = 66048, #mejor 10. no sirve para dato espaciales
+                     number = 100, #mejor 10. no sirve para dato espaciales
                      classProbs = TRUE, #probabilidad de las clases en lugar de raw predicciones
                      verbose=FALSE,
-                     savePredictions = T,
-                     summaryFunction = twoClassSummary
+                     savePredictions = T
                      )
 
 set.seed(2023)
 
+# Grilla ------------------------------------------------------------------
+
+ 
 #hacemos la grilla para los hiperparámetros
 hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.856, 0.01), # iremos variando los valores
                                    lambda = seq(0, 0.0005, 0.0001)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
+
+
+# LOGIT -------------------------------------------------------------------
+
 
 #LOGIT1
 set.seed(2023)
@@ -156,7 +162,7 @@ logit4 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
                 + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
                 +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
-                +int5 +int6+ int7 + int8,
+                +int5 +int6+ int7,
                 data = down_train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
@@ -385,6 +391,54 @@ write.csv(test_lda2,"../stores/lda2.csv",row.names=FALSE) # Exporto la predicci�
 
 
 
+# QDA ---------------------------------------------------------------------
+#QDA1
+set.seed(1234)
+qda_1 = train(pobre~cuartos_hog+ nper+Li #saco npersug y cuartos hogar porque tiene muy alta correlacion con nper
+              + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+              + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ otro_trab
+              +ocupado, 
+              data=train, 
+              method="qda",
+              trControl = ctrl,
+              metric="Accuracy")
+
+qda_1
+
+#QDA2
+set.seed(2023)
+qda_2 <- train(pobre ~ cuartos_hog+ nper +Porcentaje_ocupados + v.cabecera
+               + Jefe_mujer+ Tipodevivienda + Educacion_promedio +edad
+               + seg_soc+ Nivel_educativo+ otro_trab +ocupado + Tipo_de_trabajo
+               +v.cabecera*Jefe_mujer + Tipodevivienda*Jefe_mujer + edad*Jefe_mujer
+               + otro_trab*Jefe_mujer + ocupado*Jefe_mujer,
+               #se sacan fondo_pens y otro_trab porque tienen near zero variance (constant_vars <- nearZeroVar(train, saveMetrics = TRUE) )
+               data = train,
+               method = "qda",
+               trControl = ctrl,
+               metric = "Accuracy")
+qda_2
+
+
+# Exporto la predicción en csv para cargar en Kaggle
+
+#QDA1
+test$pobre <- predict(qda_1, newdata = test) #adaptamos 
+test_qda <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_qda$pobre <- ifelse(test_qda$pobre == "No", 0, 1)
+head(test_qda) #evalúo que la base esté correctamente creada
+write.csv(test_qda,"../stores/qda1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+#QDA2
+test$pobre <- predict(qda_2, newdata = test) #adaptamos 
+test_qda2 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_qda2$pobre <- ifelse(test_qda2$pobre == "No", 0, 1)
+head(test_qda2) #evalúo que la base esté correctamente creada
+write.csv(test_qda2,"../stores/qda2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+
 
 # KNN ---------------------------------------------------------------------
 
@@ -396,7 +450,7 @@ mylogit_knn <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                      data = train, 
                      method = "knn",
                      trControl = ctrl,
-                     tuneGrid = expand.grid(k=c(3,5,7,9,11))) #el mejor fue el 11
+                     tuneGrid = expand.grid(k=c(11,13))) #el mejor fue el 11
 
 
 mylogit_knn
@@ -409,6 +463,33 @@ test_knn$pobre <- ifelse(test_knn$pobre == "No", 0, 1)
 head(test_knn) #evalúo que la base esté correctamente creada
 write.csv(test_knn,"../stores/knn1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
+
+# Naive Bayes -------------------------------------------------------------
+
+p_load("klaR")
+
+set.seed(1410)
+mylogit_nb <- train(Default~duration+amount+installment+age+
+                      history.buena+history.mala+
+                      purpose.auto_nuevo+purpose.auto_usado+purpose.bienes+purpose.educacion+
+                      foreign.extranjero+
+                      +rent.TRUE, 
+                    data = train, 
+                    method = "nb",
+                    trControl = ctrl,
+                    tuneGrid=expand.grid(fL=seq(0,10,length.out = 3), #fl es la correción de laplace, trata de satisface el problema, warning de las probabilidades=0 (ajusta probabilidades)
+                                         usekernel=TRUE, #otro parámetro
+                                         adjust=seq(1,10,length.out = 3))) # el parámetro de ajuste, ajusta el ancho de banda de la densidad
+#para cada grupo de parámetros te da diferente accuracy
+#f(x|y|=1) = f1(x|y=1)*...*f12(x|y=1)
+#es decir debo de estimar todas las densidades, debo decir como estimo estas densidades.
+#cuando pones usekernel=TRUE, le decimos que haga un kernel density estimation (que lo estime no paramétricamente)
+#hay una ancho de banda óptimo que se encuentra por validación cruzada
+#debemos ajustar el ancho de banda, lo hacemos por adjust
+#si pones FALSE, usa una distribución normal para estimar las densidades
+
+
+mylogit_nb
 
 # Resultados de tune grid -------------------------------------------------
 
@@ -539,9 +620,10 @@ Mcnemar's Test P-Value : < 2.2e-16
                                           
        'Positive' Class : No     '
 
-#LOGIT4
+#LOGIT4- con 100 folds y downtrain. no tuvo mejora en accuracy asi que no se subio a kaggle
+> logit4$bestTune
 alpha lambda
-2 0.855  1e-04
+3 0.855  2e-04
 
 Confusion Matrix and Statistics
 
@@ -568,10 +650,27 @@ Mcnemar's Test P-Value : < 2.2e-16
    Detection Prevalence : 0.4851          
       Balanced Accuracy : 0.8061          
                                           
-       'Positive' Class : No  
+       'Positive' Class : No  ' 
 
 
 #KNN
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was k = 11.
+
+k-Nearest Neighbors 
+
+164960 samples
+18 predictor
+2 classes: 'No', 'Si' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 148464, 148464, 148465, 148465, 148464, 148464, ... 
+Resampling results across tuning parameters:
+  
+  k   Accuracy   Kappa    
+11  0.8062440  0.1749429
+
 Accuracy was used to select the optimal model using the largest value.
 The final value used for the model was k = 11.
 
@@ -604,3 +703,33 @@ Resampling results:
   
   Accuracy   Kappa    
 0.8505032  0.4823988
+
+#QDA1
+Quadratic Discriminant Analysis 
+
+164960 samples
+12 predictor
+2 classes: 'No', 'Si' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 148464, 148464, 148464, 148464, 148464, 148464, ... 
+Resampling results:
+  
+  Accuracy   Kappa    
+0.7830504  0.3196741
+
+#QDA2
+Quadratic Discriminant Analysis 
+
+164960 samples
+13 predictor
+2 classes: 'No', 'Si' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 148464, 148463, 148463, 148463, 148465, 148465, ... 
+Resampling results:
+  
+  Accuracy   Kappa    
+0.7868028  0.3940926

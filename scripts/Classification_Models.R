@@ -292,20 +292,15 @@ lda_1
 set.seed(2023)
 lda_2 <- train(pobre ~ cuartos_hog+ nper +Porcentaje_ocupados + v.cabecera
                + Jefe_mujer+ Tipodevivienda + Educacion_promedio +edad
-               + seg_soc+ Nivel_educativo+ otro_trab +ocupado + Tipo_de_trabajo,
+               + seg_soc+ Nivel_educativo+ otro_trab +ocupado + Tipo_de_trabajo
+               + v.cabecera*Jefe_mujer + Tipodevivienda*Jefe_mujer+ edad*Jefe_mujer
+               + Nivel_educativo*Jefe_mujer+ otro_trab*Jefe_mujer+ ocupado*Jefe_mujer,
               #se sacan fondo_pens y otro_trab porque tienen near zero variance (constant_vars <- nearZeroVar(train, saveMetrics = TRUE) )
                data = train,
                method = "lda",
                trControl = ctrl,
                metric = "Accuracy")
-
-
-train$int1<- interaction(train$v.cabecera,train$Jefe_mujer)
-train$int3<- interaction(train$Tipodevivienda, train$Jefe_mujer)
-train$int4<- interaction(train$edad, train$Jefe_mujer)
-train$int5<- interaction(train$Nivel_educativo, train$Jefe_mujer)
-train$int6<- interaction(train$otro_trab, train$Jefe_mujer)
-train$int8<- interaction(train$ocupado, train$Jefe_mujer)
+lda_2
 
 # Exporto la predicción en csv para cargar en Kaggle
 
@@ -318,6 +313,14 @@ head(test_lda) #evalúo que la base esté correctamente creada
 write.csv(test_lda,"../stores/lda1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 #LDA2
+test$pobre <- predict(lda_2, newdata = test) #adaptamos 
+test_lda2 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+test_lda2$pobre <- ifelse(test_lda2$pobre == "No", 0, 1)
+head(test_lda2) #evalúo que la base esté correctamente creada
+write.csv(test_lda2,"../stores/lda2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+
 
 
 # KNN ---------------------------------------------------------------------
@@ -492,3 +495,18 @@ Resampling results:
   
   Accuracy   Kappa   
 0.8268247  0.360719
+
+#LDA2
+Linear Discriminant Analysis 
+
+164960 samples
+13 predictor
+2 classes: 'No', 'Si' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 148465, 148464, 148463, 148464, 148464, 148465, ... 
+Resampling results:
+  
+  Accuracy   Kappa    
+0.8505032  0.4823988

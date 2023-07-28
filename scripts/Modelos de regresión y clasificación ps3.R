@@ -50,22 +50,128 @@ train$pobre <- factor(train$pobre, levels = c("0", "1"),
 train$Regimen_salud <- as.factor(train$Regimen_salud)
 test$Regimen_salud <- as.factor(test$Regimen_salud)
 
-train$Antiguedad_trabajo <- as.factor(train$Antiguedad_trabajo)
-test$Antiguedad_trabajo <- as.factor(test$Antiguedad_trabajo)
+# Evalúo la correlación de las variables (Matríz de correlación)
+numeric_train <- train %>% select_if(is.numeric) #separamos las numericas
+numeric_train <- ungroup(numeric_train) %>% select(-id)
+cor_matrix <- cor(numeric_train) #calculamos correlacion
+print(cor_matrix)
+library(corrplot)
+corrplot(cor_matrix, method = "circle", tl.col = "black")
+rm(cor_matrix, numeric_train)
 
-
+# Selecciono las variables para emplear en el modelo
 names(train)
 summary(train)
+
 # selecciono variables de mayor interés
-train <- select(train, c(1:6, 13:14, 16, 17, 19:24, 26, 44, 47, 48, 8, 9))
-test <- select(test, c(1:6, 13:14, 16, 17, 19:24, 26, 44, 47, 48, 8, 9))
+train <- select(train, c(1:4, 6, 13:14, 16, 17, 19:23, 26, 44, 47, 48, 8, 9))
+test <- select(test, c(1:4, 6, 13:14, 16, 17, 19:23, 26, 44, 47, 48, 8, 9))
 summary(train)
 
-# modelos de bagging, Random Forest y boosting ---------------------------------
+# convierto la variable pobre en factor y la ajusto con valores de 1 y 0
+train$pobre <- as.factor(train$pobre)
+test$pobre <- as.factor(test$pobre)
 
-# Creo control por valicación cruzadamod_fr_1$bestTune
+#train$pobre <- factor(train$pobre, levels = c(0, 1))
+#test$pobre <- factor(test$pobre, levels = c(0, 1))
+
+#Creo las bases para poder hacer las predicciones
+test_relevant <- test %>%
+  ungroup() %>%
+  select(Porcentaje_ocupados, v.cabecera, cuartos_hog, nper,
+         d_arriendo, Jefe_mujer, PersonaxCuarto, Tipodevivienda,
+         Educacion_promedio, sexo, edad, seg_soc, Nivel_educativo,
+         Tipo_de_trabajo, ocupado, IngresoPerCapita, pobre)
+train_prueba <- train %>%
+  ungroup() %>%
+  select(Porcentaje_ocupados, v.cabecera, cuartos_hog, nper,
+         d_arriendo, Jefe_mujer, PersonaxCuarto, Tipodevivienda,
+         Educacion_promedio, sexo, edad, seg_soc, Nivel_educativo,
+         Tipo_de_trabajo, ocupado, IngresoPerCapita, pobre)
+
+# balanceo los datos para reducir el sesgo en los resultados -------------------
+
+#Balanceo la muestra para nivelar con el valor de menor frecuencia
+set.seed(201718234)
+down_train <- downSample(x = train[, -ncol(train)],
+                         y = train$pobre)
+table(down_train$pobre)
+
+#Balanceo la muestra para nivelar con el valor de mayor frecuencia
+set.seed(201718234)
+up_train <- upSample(x = train[, -ncol(train)],
+                         y = train$pobre)
+table(up_train$pobre)
+
+# Creo los parámetros e hiperparámetros de ajuste del modelo -------------------
+ctrl <- trainControl(method = "repeatedcv",
+                     repeats = 5,
+                     classProbs = TRUE, # guardar probabilidades
+                     summaryFunction = twoClassSummary) # calcular métricas para accuracy
+
+set.seed(201718234)
+down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+                        d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+                        sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+                      data = down_train, 
+                      method = "treebag",
+                      nbagg = 50,
+                      metric = "Accuracy",
+                      trControl = ctrl)
+
+pacman::p_load("adabag") # Boosting (adaboost)
+
+set.seed(201718234)
+mod_adaboost_1 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = train,
+  metric = "Accuracy",
+  method = "adaboost.M1", 
+  trControl = ctrl,
+  tuneGrid = expand.grid(
+#    mfinal = c(135,145), # número de árboles que hará (iteraciones)
+ #   maxdepth = c(25, 26), # profundidad de los árboles
+    coeflearn = c("Breiman", "Freund") # tipo de coeficiente de aprendizaje / el paquete usa por default el de Breiman
+  )
+)
+
+set.seed(201718234)
+mod_adaboost_2 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = down_train,
+  metric = "Accuracy",
+  method = "adaboost.M1", 
+  trControl = ctrl,
+  tuneGrid = expand.grid(
+    #    mfinal = c(135,145), # número de árboles que hará (iteraciones)
+    #   maxdepth = c(25, 26), # profundidad de los árboles
+    coeflearn = c("Breiman", "Freund") # tipo de coeficiente de aprendizaje / el paquete usa por default el de Breiman
+  )
+)
+
+set.seed(201718234)
+mod_adaboost_3 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = up_train,
+  metric = "Accuracy",
+  method = "adaboost.M1", 
+  trControl = ctrl,
+  tuneGrid = expand.grid(
+    #    mfinal = c(135,145), # número de árboles que hará (iteraciones)
+    #   maxdepth = c(25, 26), # profundidad de los árboles
+    coeflearn = c("Breiman", "Freund") # tipo de coeficiente de aprendizaje / el paquete usa por default el de Breiman
+  )
+)
+
+# Creo control por valicación cruzadamod_fr_1$bestTune-------------------------
 cv<-trainControl(method="cv",
-                 number=5)
+                 number=3)
 
                  classProbs=TRUE, #retorna la probabilidad de cada una de las clases
                  verbose=TRUE, #
@@ -78,33 +184,104 @@ tunegrid_rf <- expand.grid(
   splitrule = "gini" # empleamos el índice de gini como regla de partición
 )
 
-# random forest regresión
-mod_rf_1 <- train(
-IngresoPerCapita ~ . - id - pobre -Li -Lp,
+# modelos de elastic net ------------------------------------------------------
+
+# Elastic Net regresión
+mod_en_1 <- train(
+IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+  sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
   data = train,
-  method = "rpart", 
+  method = "glmnet", 
   trControl = cv
 )
 
-# random forest clasificación
+mod_en_1$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
+
+#Evalúo la predicción dentro de muestra
+train_prueba$ingreso <- predict(mod_en_1, newdata = train_prueba)
+train_prueba$pred_pobre <- ifelse(train_prueba$ingreso>train$Li, 0, 1)
+train_prueba$pobre <- ifelse(train_prueba$pobre == "Si", 1, 0)
+train_prueba$pred_pobre <- factor(train_prueba$pred_pobre, levels = c(0, 1))
+train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
+conf_matrix <- confusionMatrix(train_prueba$pred_pobre, train_prueba$pobre)
+print(conf_matrix) # observo la matriz de confusión
+
+
+# Elastic Net clasificación
+mod_en_2 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = down_train,
+  method = "glmnet", 
+  trControl = cv,
+  metric = "Accuracy"#
+)#,
+  tuneGrid = expand.grid(alpha = seq(0.50, 0.60, length.out =7),
+                         lambda = seq(0.002000000, 0.003005342, length.out =3)) # bestTune = alpha  0.55 lambda 0.002705342
+)
+
+mod_en_2$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
+
+#Evalúo la predicción dentro de muestra
+train_prueba$pred_pobre_1 <- predict(mod_en_2, newdata = train_prueba)
+train_prueba$pred_pobre_1 <- ifelse(train_prueba$pred_pobre_1 == "Si", 1, 0)
+train_prueba$pred_pobre_1 <- factor(train_prueba$pred_pobre_1, levels = c(0, 1))
+train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
+conf_matrix <- confusionMatrix(train_prueba$pred_pobre_1, train_prueba$pobre)
+print(conf_matrix) # observo la matriz de confusión
+
+
+# Realizar la predicción
+test$pobre_balance_data <- predict(mod_en_1, newdata = test_relevant)
+test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
+test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+head(test1_EN) #evalúo que la base esté correctamente creada
+write.csv(test1_EN,"../stores/regresion_en_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+#predicción balance data
+test$pobre_balance_data <- predict(mod_en_2, newdata = test_relevant)
+test$pobre_balance_data <- ifelse(test$pobre_balance_data == "Si", 1, 0)
+#test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
+test2_EN_bd <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id, pobre_balance_data)
+test2_EN_bd <- test2_EN_bd %>% 
+  rename(pobre=pobre_balance_data)
+head(test2_EN_bd) #evalúo que la base esté correctamente creada
+write.csv(test2_EN_bd,"../stores/regresion_en_bd_2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+
+
+
+
+
+# random forest clasificación ------------------------------------------------
+
 mod_rf_1 <- train(
-  pobre ~ . - id - IngresoPerCapita -Li -Lp,
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
   data = train,
   method = "ranger", 
   trControl = cv,
-  maximize = F,
+  maximize = TRUE,
   metric = "Accuracy"
-)
+) # BestTune: mrty 2, splitrule extratrees, min.node.size 1
+
+mod_rf_1$metric
+
+#Evalúo la predicción dentro de muestra Random forest
+train_prueba$pobre_rf <- predict(mod_rf_1, newdata = train_prueba)
+train_prueba$pobre_rf <- ifelse(train_prueba$pred_pobre_1 == "Si", 1, 0)
+train_prueba$pobre_rf <- factor(train_prueba$pred_pobre_1, levels = c(0, 1))
+conf_matrix <- confusionMatrix(train_prueba$pred_pobre_1, train_prueba$pobre)
+print(conf_matrix) # observo la matriz de confusión
+
+table(train_prueba$pobre_rf)
 
 mod_fr_1$bestTune
-
-
-
-
-
-
-
-
 
 
 tunegrid_rf <- expand.grid(
@@ -113,6 +290,10 @@ tunegrid_rf <- expand.grid(
   splitrule = c("variance")
 )
 
+# Verificar el balance de clases después del submuestreo
+table(down_train$pobre)
+
+####################
 # Creo el modelo 11 de predicciónCreo con random forest
 modelo11rf <- train(
   price ~ .,

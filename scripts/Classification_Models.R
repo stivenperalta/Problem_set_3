@@ -4,7 +4,7 @@
 
 rm(list = ls()) # Limpiar Rstudio
 
-pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet, pROC) # Cargar paquetes requeridos
+pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet, pROC,reshape2) # Cargar paquetes requeridos
 
 #Definir el directorio
 path_script<-rstudioapi::getActiveDocumentContext()$path
@@ -36,11 +36,15 @@ test$pobre <- factor(test$pobre, levels = c("0", "1"), labels = c("No", "Si"))
 
 
 #Correlation matrix
-numeric_train <- train %>% select_if(is.numeric) #separamos las numericas
-numeric_train <- ungroup(numeric_train) %>% select(-id)
+numeric_columns <- sapply(train, is.numeric)
+cor_matrix <- cor(train[, numeric_columns])
 
-cor_matrix <- cor(numeric_train) #calculamos correlacion
-print(cor_matrix)
+cor_melted <- melt(cor_matrix)
+ggplot(data = cor_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # LOGIT  -------------------------------------------------------------------
 
@@ -286,15 +290,22 @@ lda_1
 
 #LDA2
 set.seed(2023)
-lda_2 <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper + d_arriendo +
-                 Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio + edad + 
-                 seg_soc + Nivel_educativo + Tipo_de_trabajo +
-                 ocupado + int1 + int2 + int3 + int4 + int5 + int6+ int7+ int8, #se sacan int6 y int7 porque tienen near zero variance (constant_vars <- nearZeroVar(train, saveMetrics = TRUE) )
+lda_2 <- train(pobre ~ cuartos_hog+ nper +Porcentaje_ocupados + v.cabecera
+               + Jefe_mujer+ Tipodevivienda + Educacion_promedio +edad
+               + seg_soc+ Nivel_educativo+ otro_trab +ocupado + Tipo_de_trabajo,
+              #se sacan fondo_pens y otro_trab porque tienen near zero variance (constant_vars <- nearZeroVar(train, saveMetrics = TRUE) )
                data = train,
                method = "lda",
                trControl = ctrl,
                metric = "Accuracy")
 
+
+train$int1<- interaction(train$v.cabecera,train$Jefe_mujer)
+train$int3<- interaction(train$Tipodevivienda, train$Jefe_mujer)
+train$int4<- interaction(train$edad, train$Jefe_mujer)
+train$int5<- interaction(train$Nivel_educativo, train$Jefe_mujer)
+train$int6<- interaction(train$otro_trab, train$Jefe_mujer)
+train$int8<- interaction(train$ocupado, train$Jefe_mujer)
 
 # Exporto la predicción en csv para cargar en Kaggle
 

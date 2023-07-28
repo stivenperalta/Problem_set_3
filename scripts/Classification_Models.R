@@ -56,7 +56,7 @@ ctrl<- trainControl(method = "cv", #controla el entrenamiento, la validacion cru
                     savePredictions = T) #que guarde las predicciones
 
 ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cruzada.
-                     number = 10, #mejor 10. no sirve para dato espaciales
+                     number = 66048, #mejor 10. no sirve para dato espaciales
                      classProbs = TRUE, #probabilidad de las clases en lugar de raw predicciones
                      verbose=FALSE,
                      savePredictions = T,
@@ -66,8 +66,8 @@ ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cr
 set.seed(2023)
 
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.856, 0.001), # iremos variando los valores
-                                   lambda = seq(0, 0.001, 0.0001)) # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.856, 0.01), # iremos variando los valores
+                                   lambda = seq(0, 0.0005, 0.0001)) # iremos variando los valores
 
 
 colnames(hyperparameter_grid) <- c("alpha", "lambda")
@@ -148,7 +148,7 @@ plot(logit3$results$lambda,
 
 #LOGIT4
 set.seed(2023)
-down_train <- downSample(x = train[, -ncol(train)],
+down_train <- downSample(x = train[, -ncol(train)], #hacemos esto para balancear las muestras
                          y = train$pobre)
 
 set.seed(2023)
@@ -156,11 +156,11 @@ logit4 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
                 + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
                 +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
-                +int5 +int6+ int7,
+                +int5 +int6+ int7 + int8,
                 data = down_train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
-                trControl = ctrl,
+                trControl = ctrl2,
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"
 )
@@ -241,7 +241,7 @@ confusionMatrix(data = predictTest_logit3$pred, reference=predictTest_logit3$obs
 #Logit4
 
 predictTest_logit4 <- data.frame(
-  obs = down_train$pobre,                    ## observed class labels
+  obs = up_train$pobre,                    ## observed class labels
   predict(logit4, type = "prob"),         ## predicted class probabilities
   pred = predict(logit4, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
@@ -249,6 +249,25 @@ predictTest_logit4 <- data.frame(
 head(predictTest_logit4)
 
 confusionMatrix(data = predictTest_logit4$pred, reference=predictTest_logit4$obs)
+
+#Evaluando los cortes/thresholds
+roc_data <- roc(predictTest_logit4$obs, predictTest_logit4$Si)
+plot(roc_data, main = "ROC Curve", col = "purple", lwd = 2) #vemos nuestra curva ROC. Estamos muy alto en sensitivity y bajo en specificity
+mycoords <- coords(roc_data, "all")
+
+plot(mycoords$threshold, mycoords$sensitivity, type = "l", col = "red",
+     xlab = "Cutoff", ylab = "Sensitivity", main = "Sensitivity vs. Cutoff")
+lines(mycoords$threshold, mycoords$specificity, col = "blue")
+legend("bottomright", legend = c("Sensitivity", "Specificity"), col = c("red", "blue"), lwd = 2)
+
+#Nueva matiz
+predicted_probabilities <- predictTest_logit4$Si
+new_cutoff<-0.50
+predictTest_logit4$new_thres <- factor(ifelse(predicted_probabilities > new_cutoff, "Si", "No"))
+
+confusionMatrix(data = predictTest_logit4$new_thres, reference=predictTest_logit4$obs)
+
+
 
 
 #Calculando Youden J statistic
@@ -522,34 +541,34 @@ Mcnemar's Test P-Value : < 2.2e-16
 
 #LOGIT4
 alpha lambda
-19 0.856  7e-04
+2 0.855  1e-04
 
 Confusion Matrix and Statistics
 
 Reference
-Prediction    No    Si
-No 25993  6086
-Si  7031 26938
+Prediction     No     Si
+No 104386  23624
+Si  27550 108312
 
-Accuracy : 0.8014          
-95% CI : (0.7983, 0.8044)
+Accuracy : 0.8061          
+95% CI : (0.8046, 0.8076)
 No Information Rate : 0.5             
 P-Value [Acc > NIR] : < 2.2e-16       
 
-Kappa : 0.6028          
+Kappa : 0.6121          
 
 Mcnemar's Test P-Value : < 2.2e-16       
                                           
-            Sensitivity : 0.7871          
-            Specificity : 0.8157          
-         Pos Pred Value : 0.8103          
-         Neg Pred Value : 0.7930          
+            Sensitivity : 0.7912          
+            Specificity : 0.8209          
+         Pos Pred Value : 0.8155          
+         Neg Pred Value : 0.7972          
              Prevalence : 0.5000          
-         Detection Rate : 0.3935          
-   Detection Prevalence : 0.4857          
-      Balanced Accuracy : 0.8014          
+         Detection Rate : 0.3956          
+   Detection Prevalence : 0.4851          
+      Balanced Accuracy : 0.8061          
                                           
-       'Positive' Class : No  ' 
+       'Positive' Class : No  
 
 
 #KNN

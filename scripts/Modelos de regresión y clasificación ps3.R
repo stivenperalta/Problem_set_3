@@ -109,6 +109,52 @@ ctrl <- trainControl(method = "repeatedcv",
                      classProbs = TRUE, # guardar probabilidades
                      summaryFunction = twoClassSummary) # calcular métricas para accuracy
 
+pacman::p_load("ada") #Boosting (adaboost)
+
+# defino la grilla
+grid <- expand.grid(
+  iter = c(100, 150),          # Number of boosting iterations
+  maxdepth = c(25, 26),        # Maximum tree depth
+  nu = c(0.1, 0.01)           # Shrinkage parameter (learning rate)
+)
+
+set.seed(201718234)
+mod_adaboost_1 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = train,
+  metric = "Accuracy",
+  method = "ada", 
+  trControl = ctrl,
+  tuneGrid = grid
+)
+
+set.seed(201718234)
+mod_adaboost_2 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = down_train,
+  metric = "Accuracy",
+  method = "ada", 
+  trControl = ctrl,
+  tuneGrid = grid
+)
+
+set.seed(201718234)
+mod_adaboost_3 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = up_train,
+  metric = "Accuracy",
+  method = "ada", 
+  trControl = ctrl,
+  tuneGrid = grid
+)
+
+#######################
 set.seed(201718234)
 down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
                         d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
@@ -119,55 +165,6 @@ down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + n
                       metric = "Accuracy",
                       trControl = ctrl)
 
-pacman::p_load("adabag") # Boosting (adaboost)
-
-set.seed(201718234)
-mod_adaboost_1 <- train(
-  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
-  data = train,
-  metric = "Accuracy",
-  method = "adaboost.M1", 
-  trControl = ctrl,
-  tuneGrid = expand.grid(
-#    mfinal = c(135,145), # número de árboles que hará (iteraciones)
- #   maxdepth = c(25, 26), # profundidad de los árboles
-    coeflearn = c("Breiman", "Freund") # tipo de coeficiente de aprendizaje / el paquete usa por default el de Breiman
-  )
-)
-
-set.seed(201718234)
-mod_adaboost_2 <- train(
-  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
-  data = down_train,
-  metric = "Accuracy",
-  method = "adaboost.M1", 
-  trControl = ctrl,
-  tuneGrid = expand.grid(
-    #    mfinal = c(135,145), # número de árboles que hará (iteraciones)
-    #   maxdepth = c(25, 26), # profundidad de los árboles
-    coeflearn = c("Breiman", "Freund") # tipo de coeficiente de aprendizaje / el paquete usa por default el de Breiman
-  )
-)
-
-set.seed(201718234)
-mod_adaboost_3 <- train(
-  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
-  data = up_train,
-  metric = "Accuracy",
-  method = "adaboost.M1", 
-  trControl = ctrl,
-  tuneGrid = expand.grid(
-    #    mfinal = c(135,145), # número de árboles que hará (iteraciones)
-    #   maxdepth = c(25, 26), # profundidad de los árboles
-    coeflearn = c("Breiman", "Freund") # tipo de coeficiente de aprendizaje / el paquete usa por default el de Breiman
-  )
-)
 
 # Creo control por valicación cruzadamod_fr_1$bestTune-------------------------
 cv<-trainControl(method="cv",

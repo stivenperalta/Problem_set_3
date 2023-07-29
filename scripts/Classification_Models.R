@@ -4,7 +4,7 @@
 
 rm(list = ls()) # Limpiar Rstudio
 
-pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet, pROC,reshape2) # Cargar paquetes requeridos
+pacman::p_load(ggplot2, tidyverse, caret, dplyr, tidyr, glmnet, pROC,reshape2, klaR) # Cargar paquetes requeridos
 
 #Definir el directorio
 path_script<-rstudioapi::getActiveDocumentContext()$path
@@ -33,7 +33,8 @@ glimpse(train)
 #Mutación de factores (tenemos que hacerlo por niveles/levels)
 train$pobre <- factor(train$pobre, levels = c("0", "1"), labels = c("No", "Si"))
 test$pobre <- factor(test$pobre, levels = c("0", "1"), labels = c("No", "Si"))
-
+train$otro_trab <- factor(train$otro_trab, levels = c("0", "1"), labels = c("No", "Si"))
+test$otro_trab <- factor(test$otro_trab, levels = c("0", "1"), labels = c("No", "Si"))
 
 #Correlation matrix
 numeric_columns <- sapply(train, is.numeric)
@@ -344,6 +345,10 @@ write.csv(test_logit4,"../stores/logit4.csv",row.names=FALSE) # Exporto la predi
 
 # LDA -------------------------------------
 
+cuartos_dorm + nper+Li
++ d_arriendo
++ocupado + desocupado+ inactivo
+
 #LDA1
 set.seed(1234)
 lda_1 = train(pobre~cuartos_hog+ nper+Li #saco npersug y cuartos hogar porque tiene muy alta correlacion con nper
@@ -450,7 +455,7 @@ mylogit_knn <- train(pobre~cuartos_hog+ cuartos_dorm + nper+ npersug+Li
                      data = train, 
                      method = "knn",
                      trControl = ctrl,
-                     tuneGrid = expand.grid(k=c(11,13))) #el mejor fue el 11
+                     tuneGrid = expand.grid(k=c(5,10,11))) #el mejor fue el 11
 
 
 mylogit_knn
@@ -466,30 +471,30 @@ write.csv(test_knn,"../stores/knn1.csv",row.names=FALSE) # Exporto la predicció
 
 # Naive Bayes -------------------------------------------------------------
 
-p_load("klaR")
-
-set.seed(1410)
-mylogit_nb <- train(Default~duration+amount+installment+age+
-                      history.buena+history.mala+
-                      purpose.auto_nuevo+purpose.auto_usado+purpose.bienes+purpose.educacion+
-                      foreign.extranjero+
-                      +rent.TRUE, 
-                    data = train, 
-                    method = "nb",
-                    trControl = ctrl,
-                    tuneGrid=expand.grid(fL=seq(0,10,length.out = 3), #fl es la correción de laplace, trata de satisface el problema, warning de las probabilidades=0 (ajusta probabilidades)
-                                         usekernel=TRUE, #otro parámetro
-                                         adjust=seq(1,10,length.out = 3))) # el parámetro de ajuste, ajusta el ancho de banda de la densidad
-#para cada grupo de parámetros te da diferente accuracy
-#f(x|y|=1) = f1(x|y=1)*...*f12(x|y=1)
-#es decir debo de estimar todas las densidades, debo decir como estimo estas densidades.
-#cuando pones usekernel=TRUE, le decimos que haga un kernel density estimation (que lo estime no paramétricamente)
-#hay una ancho de banda óptimo que se encuentra por validación cruzada
-#debemos ajustar el ancho de banda, lo hacemos por adjust
-#si pones FALSE, usa una distribución normal para estimar las densidades
+hist(train$cuartos_dorm, main = "Histograma de Número cuartos", xlab = "Número de cuartos", col = "skyblue", border = "white")
+hist(train$nper, main = "Histograma de Número de personas", xlab = "Número de personas", col = "skyblue", border = "white")
+hist(train$Porcentaje_ocupados, main = "Histograma de Porcentaje ocupados", xlab = "Porcentaje ocupados", col = "skyblue", border = "white")
+hist(train$edad, main = "Histograma de edad", xlab = "Edad", col = "skyblue", border = "white")
 
 
-mylogit_nb
+
+
+set.seed(2023)
+nb1 <- train(pobre ~
+              otro_trab +ocupado + Tipo_de_trabajo + seg_soc + cuartos_dorm +nper
+             +Porcentaje_ocupados +edad + sexo, 
+              data = train, 
+              method = "nb",
+              trControl = ctrl,
+              tuneGrid=expand.grid(fL=seq(0,1,0.1), #fl es la correción de laplace, trata de satisface el problema, warning de las probabilidades=0 (ajusta probabilidades)
+                                  usekernel=TRUE, #otro parámetro
+                                  adjust=seq(0,1,0.1)))
+nb1
+
+v.cabecera
+Jefe_mujer
+Tipodevivienda
+Nivel_educativo
 
 # Resultados de tune grid -------------------------------------------------
 

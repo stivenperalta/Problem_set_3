@@ -12,6 +12,7 @@ pacman::p_load(ggplot2, #gráficas
                parallel, # conocer los cores de mi pc
                doParallel, # maximizar el procesamiento en r en función de los cores de mi pc
                ranger,
+               ada, # Adaboost para clasificación
                dplyr, tidyr, glmnet, pROC, randomForest) # Cargar paquetes requeridos
 
 #Definir el directorio
@@ -72,9 +73,6 @@ summary(train)
 train$pobre <- as.factor(train$pobre)
 test$pobre <- as.factor(test$pobre)
 
-#train$pobre <- factor(train$pobre, levels = c(0, 1))
-#test$pobre <- factor(test$pobre, levels = c(0, 1))
-
 #Creo las bases para poder hacer las predicciones
 test_relevant <- test %>%
   ungroup() %>%
@@ -104,12 +102,10 @@ up_train <- upSample(x = train[, -ncol(train)],
 table(up_train$pobre)
 
 # Creo los parámetros e hiperparámetros de ajuste del modelo -------------------
-ctrl <- trainControl(method = "repeatedcv",
+ctrl <- trainControl(method = "repeatedcv", # CV para clasificación
                      repeats = 5,
                      classProbs = TRUE, # guardar probabilidades
                      summaryFunction = twoClassSummary) # calcular métricas para accuracy
-
-pacman::p_load("ada") #Boosting (adaboost)
 
 # defino la grilla
 grid <- expand.grid(
@@ -181,31 +177,25 @@ tunegrid_rf <- expand.grid(
   splitrule = "gini" # empleamos el índice de gini como regla de partición
 )
 
+
 # modelos de elastic net ------------------------------------------------------
 
-# Elastic Net regresión
-library(progress)
-tic()
-pb <- txtProgressBar(min = 0,      # Valor mínimo de la barra de progreso
-                     max = 100, # Valor máximo de la barra de progreso
-                     style = 3,    # Estilo de la barra (también style = 1 y style = 2)
-                     width = 50,   # Ancho de la barra. Por defecto: getOption("width")
-                     char = "=")   # Caracter usado para crear la barra
-
-
+# Elastic Net regresión con data desbalanceada
 mod_en_1 <- train(
-IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + Jefe_mujer +
-  Tipodevivienda + Educacion_promedio + sexo + edad + seg_soc +
-  Nivel_educativo + Tipo_de_trabajo + ocupado,
+  IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
   data = train,
   method = "glmnet", 
-  trControl = ctrl2,
-  callback = function(data) pb$tick()
+  trControl = ctrl2, 
+  metric = "MAE",
+  tuneGrid = expand.grid(alpha = seq(0.6, 0.9, length.out =5),
+                         lambda = seq(862.3046, 867.3046, length.out =10))
 )
-toc()
-pb$close()
+
+
+
 mod_en_1$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
-varImp(mod_en_1) # los resultados indican que es recomendable omitir d_arriendo, PersonasxCuarto y cuartos_hog
 
 #Evalúo la predicción dentro de muestra
 train_prueba$ingreso <- predict(mod_en_1, newdata = train_prueba)
@@ -216,6 +206,13 @@ train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
 conf_matrix <- confusionMatrix(train_prueba$pred_pobre, train_prueba$pobre)
 print(conf_matrix) # observo la matriz de confusión
 
+# Realizar la predicción
+test$IngresoPerCapita <- predict(mod_en_1, newdata = test_relevant)
+test$pobre <- ifelse(test$IngresoPerCapita>test$Lp, 0, 1)
+test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+head(test1_EN) #evalúo que la base esté correctamente creada
+write.csv(test1_EN,"../stores/regresion_en_3.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 # Elastic Net clasificación
 mod_en_2 <- train(
@@ -227,9 +224,9 @@ mod_en_2 <- train(
   trControl = cv,
   metric = "Accuracy"#
 )#,
-  tuneGrid = expand.grid(alpha = seq(0.50, 0.60, length.out =7),
-                         lambda = seq(0.002000000, 0.003005342, length.out =3)) # bestTune = alpha  0.55 lambda 0.002705342
-)
+#  tuneGrid = expand.grid(alpha = seq(0.50, 0.60, length.out =7),
+#                        lambda = seq(0.002000000, 0.003005342, length.out =3)) # bestTune = alpha  0.55 lambda 0.002705342
+#)
 
 mod_en_2$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
 
@@ -261,6 +258,38 @@ test2_EN_bd <- test2_EN_bd %>%
 head(test2_EN_bd) #evalúo que la base esté correctamente creada
 write.csv(test2_EN_bd,"../stores/regresion_en_bd_2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
+# Elastic Net regresión con data balanceada
+mod_en_3 <- train(
+  IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = up_train,
+  method = "glmnet", 
+  trControl = ctrl2, 
+  metric = "MAE",
+  tuneGrid = expand.grid(alpha = seq(0.4, 0.7, length.out =5),
+                         lambda = seq(70519.15, 74519.15, length.out =10))
+)
+
+mod_en_3$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
+varImp(mod_en_3)
+
+#Evalúo la predicción dentro de muestra
+train_prueba$ingreso_en_3 <- predict(mod_en_3, newdata = train_prueba)
+train_prueba$pred_pobre <- ifelse(train_prueba$ingreso_en_3>train$Li, 0, 1)
+train_prueba$pobre <- ifelse(train_prueba$pobre == "Si", 1, 0)
+train_prueba$pred_pobre <- factor(train_prueba$pred_pobre, levels = c(0, 1))
+train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
+conf_matrix <- confusionMatrix(train_prueba$pred_pobre, train_prueba$pobre)
+print(conf_matrix) # observo la matriz de confusión
+
+# Realizar la predicción
+test$IngresoPerCapita_en_3 <- predict(mod_en_3, newdata = test_relevant)
+test$pobre <- ifelse(test$IngresoPerCapita_en_3>test$Li, 0, 1)
+test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+head(test1_EN) #evalúo que la base esté correctamente creada
+write.csv(test1_EN,"../stores/regresion_uptrain_en_3.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
 
@@ -293,103 +322,33 @@ table(train_prueba$pobre_rf)
 mod_fr_1$bestTune
 
 
-tunegrid_rf <- expand.grid(
-  min.node.size = seq(c(135,145,length.out=5)), # inicial c(3000, 6000, 9000, 12000)
-  mtry = c(25, 26), #sqrt de variables #inicial c(6, 12, 18)
+# Segundo modelo de regresión
+pacman::p_load("e1071", "ranger", "dplyr")
+gridreg <- expand.grid( # defino la grilla del modelo
+  min.node.size = seq(c(10,150,length.out=5)), 
+  mtry = c(5, 10), #sqrt de variables #inicial c(6, 12, 18)
   splitrule = c("variance")
 )
-
-# Verificar el balance de clases después del submuestreo
-table(down_train$pobre)
-
-####################
-# Creo el modelo 11 de predicciónCreo con random forest
-modelo11rf <- train(
-  price ~ .,
+train$IngresoPerCapita <- as.numeric(train$IngresoPerCapita) # defino el tipo correcto de la variable Y numérica
+mod_rf_reg2 <- train(
+  IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
   data = train,
   method = "ranger", 
-  trControl = fitcontrol_localidad,
+  trControl = ctrl2,
   maximize = F,
   metric = "MAE",
-  tuneGrid = tunegrid_rf # bestTune = alpha  0.55 lambda 31446558
+  tuneGrid = gridreg # bestTune = alpha  0.55 lambda 31446558
 )
 
-round(modelo11rf$results$MAE[which.min(modelo11rf$results$mtry)],3) #Evalúo el error de predicción de ese lambda
-modelo11rf$bestTune # evaluar el mejor alpha y lambda
-plot(modelo11rf, xvar = "lambda") # Grafico el error MAE
-plot(modelo1rf) # observo gráficamente los resultados
-fancyRpartPlot(modelo11rf$finalModel) # grafico el árbol (librería rattle)
-
-#predigo el resultado en mi test
-test_data$price <- predict(modelo11rf, newdata = test_data)
-test9 <- test_data %>% #organizo el csv para poder cargarlo en kaggle
-  st_drop_geometry() %>% 
-  select(property_id,price) %>% 
-  mutate(price = round(price / 10000000) * 10000000) # redondeo valores a múltiplos de 10 millones
-head(test9) #evalúo que la base esté correctamente creada
-write.csv(test9,"../stores/spatial_random_forest.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
-
-# Creo el modelo 14 de predicciónCreo con random forest
-modelo14rf_barrio <- train(
-  price ~ .,
-  data = train,
-  method = "ranger", 
-  trControl = fitcontrol_barrio,
-  maximize = F,
-  metric = "MAE",
-  tuneGrid = tunegrid_rf 
-)
-
-
-# Creo el modelo 12 de predicción con boosting
-
-#creo la grilla
-tunegrid_boosting <- expand.grid(
-  mtry = c(25),
-  splitrule = c("extratrees"),
-  min.node.size = c(135, 136)
-)
-
-modelo12boosting <- train(
-price ~ .,
-data = train,
-method = "ranger", 
-trControl = fitcontrol_barrio,
-maximize = F,
-metric = "MAE",
-tuneGrid = tunegrid_boosting # bestTune = alpha  0.55 lambda 31446558
-)
-
-round(modelo12boosting$results$MAE[which.min(modelo12boosting$results$MAE)],3) #Evalúo el error de predicción de ese lambda
-mean(train$price)
-modelo12boosting$bestTune # evaluar el mejor alpha y lambda
-plot(modelo12boosting, xvar = "lambda") # Grafico el error MAE
-plot(modelo12boosting) # observo gráficamente los resultados
-fancyRpartPlot(modelo12boosting$finalModel) # grafico el árbol (librería rattle)
-
-#predigo el resultado en mi test
-test_data$price <- predict(modelo12boosting, newdata = test_data)
-test10_1 <- test_data %>% #organizo el csv para poder cargarlo en kaggle
-  st_drop_geometry() %>% 
-  select(property_id,price) %>% 
-  mutate(price = round(price / 10000000) * 10000000) # redondeo valores a múltiplos de 10 millones
-head(test10_1) #evalúo que la base esté correctamente creada
-write.csv(test10_1,"../stores/spatial_boosting_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
-
-# modelo 13 bagging
-library(ipred)
-
-modelo_bagging <- bagging(
-  formula = price ~ .,
-  data = train,
-  nbagg = 1000,
-  trControl = tunegrid_rf,
-  coob = TRUE
-)
-
-mean(train$price)
-modelo_bagging$err # evaluar el err
-y_hat_price_bagging <- predict(modelo_bagging, test_data) # Predicción del precio con el modelo1
-require("Metrics")
-mae(y_hat_price_bagging, train$price) # se evalúa en la unidad de medida de price (y) es decir, en promedio, mi modelo se desacacha en x unidades de medida
-
+# Otros ########################################################################
+set.seed(201718234)
+down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+                        d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+                        sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+                      data = down_train, 
+                      method = "treebag",
+                      nbagg = 50,
+                      metric = "Accuracy",
+                      trControl = ctrl)

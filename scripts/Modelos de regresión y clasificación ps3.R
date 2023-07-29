@@ -102,6 +102,8 @@ up_train <- upSample(x = train[, -ncol(train)],
 table(up_train$pobre)
 
 # Creo los parámetros e hiperparámetros de ajuste del modelo -------------------
+
+# Creo control por valicación cruzada para clasificación
 ctrl <- trainControl(method = "repeatedcv", # CV para clasificación
                      repeats = 5,
                      classProbs = TRUE, # guardar probabilidades
@@ -109,13 +111,25 @@ ctrl <- trainControl(method = "repeatedcv", # CV para clasificación
 
 # defino la grilla
 grid <- expand.grid(
-  iter = c(100, 150),          # Number of boosting iterations
-  maxdepth = c(25, 26),        # Maximum tree depth
+  iter = c(40, 50),          # Number of boosting iterations
+  maxdepth = c(15),        # Maximum tree depth
   nu = c(0.1, 0.01)           # Shrinkage parameter (learning rate)
 )
 
+# Creo control por valicación cruzada para regresión
+ctrl2<-trainControl(method="cv",
+                    number=5, 
+                    savePredictions= TRUE) #que guarde las predicciones
+
+#creo la grilla para random forest
+tunegrid_rf <- expand.grid(
+  min.node.size = seq(c(10,150,length.out=5)), # controla la profundidad del árbol
+  mtry = c(5, 8, 15), #sqrt de variables # es el número de predictores (si los toma todos es bagging; solo un subconjunto es random forest)
+  splitrule = "gini" # empleamos el índice de gini como regla de partición
+)
+
 set.seed(201718234)
-mod_adaboost_1 <- train(
+#mod_adaboost_1 <- train(
   pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
     d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
     sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
@@ -127,7 +141,7 @@ mod_adaboost_1 <- train(
 )
 
 set.seed(201718234)
-mod_adaboost_2 <- train(
+#mod_adaboost_2 <- train(
   pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
     d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
     sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
@@ -139,7 +153,7 @@ mod_adaboost_2 <- train(
 )
 
 set.seed(201718234)
-mod_adaboost_3 <- train(
+#mod_adaboost_3 <- train(
   pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
     d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
     sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
@@ -149,34 +163,6 @@ mod_adaboost_3 <- train(
   trControl = ctrl,
   tuneGrid = grid
 )
-
-#######################
-set.seed(201718234)
-down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-                        d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-                        sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
-                      data = down_train, 
-                      method = "treebag",
-                      nbagg = 50,
-                      metric = "Accuracy",
-                      trControl = ctrl)
-
-
-# Creo control por valicación cruzadamod_fr_1$bestTune-------------------------
-ctrl2<-trainControl(method="cv",
-                 number=5)
-
-                 classProbs=TRUE, #retorna la probabilidad de cada una de las clases
-                 verbose=TRUE, #
-                 savePredictions=T) #que guarde las predicciones
-
-#creo la grilla
-tunegrid_rf <- expand.grid(
-  min.node.size = seq(c(135,145,length.out=5)), # controla la profundidad del árbol
-  mtry = c(25, 26), #sqrt de variables # es el número de predictores (si los toma todos es bagging; solo un subconjunto es random forest)
-  splitrule = "gini" # empleamos el índice de gini como regla de partición
-)
-
 
 # modelos de elastic net ------------------------------------------------------
 
@@ -192,8 +178,6 @@ mod_en_1 <- train(
   tuneGrid = expand.grid(alpha = seq(0.6, 0.9, length.out =5),
                          lambda = seq(862.3046, 867.3046, length.out =10))
 )
-
-
 
 mod_en_1$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
 
@@ -214,51 +198,7 @@ test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
 head(test1_EN) #evalúo que la base esté correctamente creada
 write.csv(test1_EN,"../stores/regresion_en_3.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-# Elastic Net clasificación
-mod_en_2 <- train(
-  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
-  data = down_train,
-  method = "glmnet", 
-  trControl = cv,
-  metric = "Accuracy"#
-)#,
-#  tuneGrid = expand.grid(alpha = seq(0.50, 0.60, length.out =7),
-#                        lambda = seq(0.002000000, 0.003005342, length.out =3)) # bestTune = alpha  0.55 lambda 0.002705342
-#)
-
-mod_en_2$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
-
-#Evalúo la predicción dentro de muestra
-train_prueba$pred_pobre_1 <- predict(mod_en_2, newdata = train_prueba)
-train_prueba$pred_pobre_1 <- ifelse(train_prueba$pred_pobre_1 == "Si", 1, 0)
-train_prueba$pred_pobre_1 <- factor(train_prueba$pred_pobre_1, levels = c(0, 1))
-train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
-conf_matrix <- confusionMatrix(train_prueba$pred_pobre_1, train_prueba$pobre)
-print(conf_matrix) # observo la matriz de confusión
-
-
-# Realizar la predicción
-test$pobre_balance_data <- predict(mod_en_1, newdata = test_relevant)
-test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
-test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
-  select(id,pobre)
-head(test1_EN) #evalúo que la base esté correctamente creada
-write.csv(test1_EN,"../stores/regresion_en_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
-
-#predicción balance data
-test$pobre_balance_data <- predict(mod_en_2, newdata = test_relevant)
-test$pobre_balance_data <- ifelse(test$pobre_balance_data == "Si", 1, 0)
-#test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
-test2_EN_bd <- test %>% #organizo el csv para poder cargarlo en kaggle
-  select(id, pobre_balance_data)
-test2_EN_bd <- test2_EN_bd %>% 
-  rename(pobre=pobre_balance_data)
-head(test2_EN_bd) #evalúo que la base esté correctamente creada
-write.csv(test2_EN_bd,"../stores/regresion_en_bd_2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
-
-# Elastic Net regresión con data balanceada
+# Elastic Net regresión con data balanceada (upsample)
 mod_en_3 <- train(
   IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
     d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
@@ -291,9 +231,48 @@ test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
 head(test1_EN) #evalúo que la base esté correctamente creada
 write.csv(test1_EN,"../stores/regresion_uptrain_en_3.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
+# Elastic Net clasificación con balance downsample
+mod_en_2 <- train(
+  pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
+    d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
+    sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = down_train,
+  method = "glmnet", 
+  trControl = cv,
+  metric = "Accuracy"#
+)#,
+#  tuneGrid = expand.grid(alpha = seq(0.50, 0.60, length.out =7),
+#                        lambda = seq(0.002000000, 0.003005342, length.out =3)) # bestTune = alpha  0.55 lambda 0.002705342
+#)
 
+mod_en_2$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
 
+#Evalúo la predicción dentro de muestra
+train_prueba$pred_pobre_1 <- predict(mod_en_2, newdata = train_prueba)
+train_prueba$pred_pobre_1 <- ifelse(train_prueba$pred_pobre_1 == "Si", 1, 0)
+train_prueba$pred_pobre_1 <- factor(train_prueba$pred_pobre_1, levels = c(0, 1))
+train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
+conf_matrix <- confusionMatrix(train_prueba$pred_pobre_1, train_prueba$pobre)
+print(conf_matrix) # observo la matriz de confusión
 
+# Realizar la predicción
+test$pobre_balance_data <- predict(mod_en_1, newdata = test_relevant)
+test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
+test1_EN <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+head(test1_EN) #evalúo que la base esté correctamente creada
+write.csv(test1_EN,"../stores/regresion_en_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+#predicción balance data
+test$pobre_balance_data <- predict(mod_en_2, newdata = test_relevant)
+test$pobre_balance_data <- ifelse(test$pobre_balance_data == "Si", 1, 0)
+#test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
+test2_EN_bd <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id, pobre_balance_data)
+test2_EN_bd <- test2_EN_bd %>% 
+  rename(pobre=pobre_balance_data)
+head(test2_EN_bd) #evalúo que la base esté correctamente creada
+write.csv(test2_EN_bd,"../stores/regresion_en_bd_2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 # random forest clasificación ------------------------------------------------
 
@@ -321,7 +300,6 @@ table(train_prueba$pobre_rf)
 
 mod_fr_1$bestTune
 
-
 # Segundo modelo de regresión
 pacman::p_load("e1071", "ranger", "dplyr")
 gridreg <- expand.grid( # defino la grilla del modelo
@@ -341,14 +319,3 @@ mod_rf_reg2 <- train(
   metric = "MAE",
   tuneGrid = gridreg # bestTune = alpha  0.55 lambda 31446558
 )
-
-# Otros ########################################################################
-set.seed(201718234)
-down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-                        d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-                        sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
-                      data = down_train, 
-                      method = "treebag",
-                      nbagg = 50,
-                      metric = "Accuracy",
-                      trControl = ctrl)

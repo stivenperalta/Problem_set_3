@@ -167,8 +167,8 @@ down_outside <- train(pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + n
 
 
 # Creo control por valicación cruzadamod_fr_1$bestTune-------------------------
-cv<-trainControl(method="cv",
-                 number=3)
+ctrl2<-trainControl(method="cv",
+                 number=5)
 
                  classProbs=TRUE, #retorna la probabilidad de cada una de las clases
                  verbose=TRUE, #
@@ -184,16 +184,28 @@ tunegrid_rf <- expand.grid(
 # modelos de elastic net ------------------------------------------------------
 
 # Elastic Net regresión
+library(progress)
+tic()
+pb <- txtProgressBar(min = 0,      # Valor mínimo de la barra de progreso
+                     max = 100, # Valor máximo de la barra de progreso
+                     style = 3,    # Estilo de la barra (también style = 1 y style = 2)
+                     width = 50,   # Ancho de la barra. Por defecto: getOption("width")
+                     char = "=")   # Caracter usado para crear la barra
+
+
 mod_en_1 <- train(
-IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
-d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
-  sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
+IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + Jefe_mujer +
+  Tipodevivienda + Educacion_promedio + sexo + edad + seg_soc +
+  Nivel_educativo + Tipo_de_trabajo + ocupado,
   data = train,
   method = "glmnet", 
-  trControl = cv
+  trControl = ctrl2,
+  callback = function(data) pb$tick()
 )
-
+toc()
+pb$close()
 mod_en_1$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
+varImp(mod_en_1) # los resultados indican que es recomendable omitir d_arriendo, PersonasxCuarto y cuartos_hog
 
 #Evalúo la predicción dentro de muestra
 train_prueba$ingreso <- predict(mod_en_1, newdata = train_prueba)

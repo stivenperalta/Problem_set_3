@@ -12,7 +12,8 @@ pacman::p_load(ggplot2, #gráficas
                parallel, # conocer los cores de mi pc
                doParallel, # maximizar el procesamiento en r en función de los cores de mi pc
                ranger,
-               ada, # Adaboost para clasificación
+               ada, # Adaboost para clasificación,
+               e1071,
                dplyr, tidyr, glmnet, pROC, randomForest) # Cargar paquetes requeridos
 
 #Definir el directorio
@@ -92,7 +93,8 @@ train_prueba <- train %>%
 #Balanceo la muestra para nivelar con el valor de menor frecuencia
 set.seed(201718234)
 down_train <- downSample(x = train[, -ncol(train)],
-                         y = train$pobre)
+                         y = train$pobre,
+                         prop = 0.6)
 table(down_train$pobre)
 
 #Balanceo la muestra para nivelar con el valor de mayor frecuencia
@@ -101,24 +103,29 @@ up_train <- upSample(x = train[, -ncol(train)],
                          y = train$pobre)
 table(up_train$pobre)
 
+#Balanceo la muestra con ROSE
+pacman::p_load(ROSE)
+
 # Creo los parámetros e hiperparámetros de ajuste del modelo -------------------
 
 # Creo control por valicación cruzada para clasificación
 ctrl <- trainControl(method = "repeatedcv", # CV para clasificación
                      repeats = 5,
+                     verboseIter = TRUE,
                      classProbs = TRUE, # guardar probabilidades
                      summaryFunction = twoClassSummary) # calcular métricas para accuracy
 
 # defino la grilla
 grid <- expand.grid(
-  iter = c(40, 50),          # Number of boosting iterations
+  iter = seq(c(10,150,length.out=20)),          # Number of boosting iterations
   maxdepth = c(15),        # Maximum tree depth
-  nu = c(0.1, 0.01)           # Shrinkage parameter (learning rate)
+  nu = c(0.1)           # Shrinkage parameter (learning rate)
 )
 
 # Creo control por valicación cruzada para regresión
 ctrl2<-trainControl(method="cv",
-                    number=5, 
+                    number=5,
+                    verboseIter = TRUE,
                     savePredictions= TRUE) #que guarde las predicciones
 
 #creo la grilla para random forest
@@ -129,7 +136,7 @@ tunegrid_rf <- expand.grid(
 )
 
 set.seed(201718234)
-#mod_adaboost_1 <- train(
+mod_adaboost_1 <- train(
   pobre ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper +
     d_arriendo + Jefe_mujer + PersonaxCuarto + Tipodevivienda + Educacion_promedio +
     sexo + edad + seg_soc + Nivel_educativo + Tipo_de_trabajo + ocupado,
@@ -210,17 +217,32 @@ mod_en_3 <- train(
   tuneGrid = expand.grid(alpha = seq(0.4, 0.7, length.out =5),
                          lambda = seq(70519.15, 74519.15, length.out =10))
 )
-
+prop.table(table(train$pobre))
 mod_en_3$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
 varImp(mod_en_3)
 
+# Omito variables menos relevantes
+mod_en_4 <- train(
+  IngresoPerCapita ~ Porcentaje_ocupados + v.cabecera + cuartos_hog + nper + seg_soc +
+    d_arriendo + Tipodevivienda + sexo + Nivel_educativo + Tipo_de_trabajo + ocupado,
+  data = up_train,
+  method = "glmnet", 
+  trControl = ctrl2, 
+  metric = "MAE",
+  tuneGrid = expand.grid(alpha = seq(0.4, 0.7, length.out =5),
+                         lambda = seq(70519.15, 74519.15, length.out =10))
+)
+
+mod_en_4$bestTune # Evalúo los mejores hiperparámetros para ajustar la grilla
+varImp(mod_en_4)
+
 #Evalúo la predicción dentro de muestra
-train_prueba$ingreso_en_3 <- predict(mod_en_3, newdata = train_prueba)
-train_prueba$pred_pobre <- ifelse(train_prueba$ingreso_en_3>train$Li, 0, 1)
+train_prueba$ingreso_en_4 <- predict(mod_en_4, newdata = train_prueba)
+train_prueba$pred_pobre_1 <- ifelse(train_prueba$ingreso_en_4>train$Li, 0, 1)
 train_prueba$pobre <- ifelse(train_prueba$pobre == "Si", 1, 0)
-train_prueba$pred_pobre <- factor(train_prueba$pred_pobre, levels = c(0, 1))
+train_prueba$pred_pobre_1 <- factor(train_prueba$pred_pobre_1, levels = c(0, 1))
 train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
-conf_matrix <- confusionMatrix(train_prueba$pred_pobre, train_prueba$pobre)
+conf_matrix <- confusionMatrix(train_prueba$pred_pobre_1, train_prueba$pobre)
 print(conf_matrix) # observo la matriz de confusión
 
 # Realizar la predicción
@@ -319,3 +341,34 @@ mod_rf_reg2 <- train(
   metric = "MAE",
   tuneGrid = gridreg # bestTune = alpha  0.55 lambda 31446558
 )
+
+mod_rf_reg2$bestTune
+
+#Evalúo la predicción dentro de muestra Random forest
+train_prueba$pobre_rf <- predict(mod_rf_reg2, newdata = train_prueba)
+train_prueba$pobre_rf <- ifelse(train_prueba$pobre_rf>train$Lp, 0, 1)
+train_prueba$pobre <- ifelse(train_prueba$pobre == "Si", 1, 0)
+train_prueba$pobre_rf <- factor(train_prueba$pobre_rf, levels = c(0, 1))
+train_prueba$pobre <- factor(train_prueba$pobre, levels = c(0, 1))
+conf_matrix <- confusionMatrix(train_prueba$pobre_rf, train_prueba$pobre)
+print(conf_matrix) # observo la matriz de confusión
+table(train_prueba$pobre_rf)
+
+# Realizar la predicción en test
+test$pobre_rf <- predict(mod_rf_reg2, newdata = test_relevant)
+test$pobre <- ifelse(test$pobre_rf>test$Li, 0, 1)
+test1_rf <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id,pobre)
+head(test1_rf) #evalúo que la base esté correctamente creada
+write.csv(test1_rf,"../stores/regresion_rf_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
+
+#predicción balance data
+test$pobre_balance_data <- predict(mod_en_2, newdata = test_relevant)
+test$pobre_balance_data <- ifelse(test$pobre_balance_data == "Si", 1, 0)
+#test$pobre <- ifelse(test$IngresoPerCapita>test$Li, 0, 1)
+test2_EN_bd <- test %>% #organizo el csv para poder cargarlo en kaggle
+  select(id, pobre_balance_data)
+test2_EN_bd <- test2_EN_bd %>% 
+  rename(pobre=pobre_balance_data)
+head(test2_EN_bd) #evalúo que la base esté correctamente creada
+write.csv(test2_EN_bd,"../stores/regresion_en_bd_2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle

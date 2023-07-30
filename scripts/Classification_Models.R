@@ -65,7 +65,7 @@ ctrl2<- trainControl(method = "cv", #controla el entrenamiento, la validacion cr
 
 set.seed(2023)
 
-# Grilla ------------------------------------------------------------------
+# GRILLA ------------------------------------------------------------------
 
  
 #hacemos la grilla para los hiperparámetros
@@ -182,6 +182,28 @@ plot(logit4$results$lambda,
      xlab="lambda",
      ylab="Accuracy")
 
+#LOGIT 3.1
+set.seed(2023)
+logit3_1 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
+                + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+                + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
+                +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
+                +int5 +int6+ int7 + int8, #especifico mi formula. primero utilizaremos todos los predictores "."
+                data = train,
+                metric="Accuracy", #metrica de performance
+                method = "glmnet", #logistic regression with elastic net regularization
+                trControl = ctrl,
+                tuneGrid = hyperparameter_grid,
+                family= "binomial"
+)
+
+
+#para tune logit3_1
+plot(logit3_1$results$lambda,
+     logit3_1$results$Accuracy,
+     xlab="lambda",
+     ylab="Accuracy")
+
 # LOGIT BESTUNES ----------------------------------------------------------
 
 #Adaptamos hiperparámetros en base a esto
@@ -189,6 +211,7 @@ logit1$bestTune
 logit2$bestTune
 logit3$bestTune
 logit4$bestTune
+logit3_1$bestTune
 
 logit1
 logit2

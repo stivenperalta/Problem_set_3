@@ -211,8 +211,9 @@ var_imp <- varImp(logit3_1)$importance %>%
 top_30_imp_variables <- var_imp %>%
        top_n(30, wt = Overall)
 ggplot(top_30_imp_variables, aes(x = fct_inorder(rowname), y = Overall)) +
-       geom_col() +
+       geom_col(fill= "darkslategrey", show.legend=FALSE) +
        coord_flip() +
+       labs(x = "Variables de interés", y = "Importancia")+
        theme_bw()
 
 #para tune logit3_1

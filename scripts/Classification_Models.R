@@ -131,6 +131,8 @@ train$int5<- interaction(train$Nivel_educativo, train$Jefe_mujer)
 train$int6<- interaction(train$otro_trab, train$Jefe_mujer)
 train$int7<- interaction(train$fondo_pensiones, train$Jefe_mujer)
 train$int8<- interaction(train$ocupado, train$Jefe_mujer)
+train$int9<- interaction(train$Porcentaje_ocupados, train$Jefe_mujer)
+train$int10<-interaction(train$Tipo_de_trabajo, train$Jefe_mujer)
 
 set.seed(2023)
 logit3 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
@@ -219,11 +221,11 @@ plot(logit3_1$results$lambda,
      xlab="lambda",
      ylab="Accuracy")
 
-#LOGIT 3.2 (9 variables sin contar interacciones)
+#LOGIT 3.2 (10 variables sin contar interacciones)
 set.seed(2023)
 logit3_2 <- train(pobre~ Porcentaje_ocupados+ edad + edad*edad+ int4 + Tipo_de_trabajo+ pagos_arr_pen
                   + fondo_pensiones + int7 + Nivel_educativo+ int5 + viv_pag_trab+ Regimen_salud
-                  + Tipodevivienda, #especifico mi formula. primero utilizaremos todos los predictores "."
+                  + Tipodevivienda + Jefe_mujer, #especifico mi formula. primero utilizaremos todos los predictores "."
                   data = train,
                   metric="Accuracy", #metrica de performance
                   method = "glmnet", #logistic regression with elastic net regularization
@@ -235,16 +237,15 @@ logit3_2 <- train(pobre~ Porcentaje_ocupados+ edad + edad*edad+ int4 + Tipo_de_t
 #revisamos las variables
 varImp(logit3_2)
 
-#para tune logit3_1
+#para tune logit3_2
 plot(logit3_2$results$lambda,
      logit3_2$results$Accuracy,
      xlab="lambda",
      ylab="Accuracy")
 
-#LOGIT 3.3 (6 variables (sin contar interacciones)
+#LOGIT 3.3 (4 variables (sin contar interacciones)
 set.seed(2023)
-logit3_2 <- train(pobre~ Porcentaje_ocupados+ edad + edad*edad+ int4 + Tipo_de_trabajo
-                  + Nivel_educativo+ pagos_arr_pen + fondo_pensiones + int7, #especifico mi formula. primero utilizaremos todos los predictores "."
+logit3_3 <- train(pobre~ Porcentaje_ocupados+ int9+ edad + edad*edad+ int4 + Tipo_de_trabajo + int10 + Jefe_mujer, #especifico mi formula. primero utilizaremos todos los predictores "."
                   data = train,
                   metric="Accuracy", #metrica de performance
                   method = "glmnet", #logistic regression with elastic net regularization
@@ -256,7 +257,7 @@ logit3_2 <- train(pobre~ Porcentaje_ocupados+ edad + edad*edad+ int4 + Tipo_de_t
 #revisamos las variables
 varImp(logit3_3)
 
-#para tune logit3_1
+#para tune logit3_3
 plot(logit3_3$results$lambda,
      logit3_3$results$Accuracy,
      xlab="lambda",
@@ -272,6 +273,7 @@ logit3$bestTune
 logit4$bestTune
 logit3_1$bestTune
 logit3_2$bestTune
+logit3_3$bestTune
 
 logit1
 logit2
@@ -399,6 +401,17 @@ predictTest_logit3_2 <- data.frame(
 head(predictTest_logit3_2)
 
 confusionMatrix(data = predictTest_logit3_2$pred, reference=predictTest_logit3_2$obs)
+
+#Logit3_3
+predictTest_logit3_3 <- data.frame(
+  obs = train$pobre,                    ## observed class labels
+  predict(logit3_3, type = "prob"),         ## predicted class probabilities
+  pred = predict(logit3_3, type = "raw")    ## predicted class labels 
+)
+
+head(predictTest_logit3_3)
+
+confusionMatrix(data = predictTest_logit3_3$pred, reference=predictTest_logit3_3$obs)
 
 
 #Calculando Youden J statistic
@@ -821,34 +834,65 @@ Mcnemar's Test P-Value : < 2.2e-16
 
 #Logit 3.2
 alpha lambda
-4 0.855  3e-04
+6 0.855  5e-04
 
 Confusion Matrix and Statistics
 
 Reference
 Prediction     No     Si
-No 123265  16620
-Si   8671  16404
+No 123284  16655
+Si   8652  16369
 
-Accuracy : 0.8467          
-95% CI : (0.8449, 0.8484)
+Accuracy : 0.8466          
+95% CI : (0.8448, 0.8483)
 No Information Rate : 0.7998          
 P-Value [Acc > NIR] : < 2.2e-16       
 
-Kappa : 0.4738          
+Kappa : 0.4731          
 
 Mcnemar's Test P-Value : < 2.2e-16       
                                           
-            Sensitivity : 0.9343          
-            Specificity : 0.4967          
-         Pos Pred Value : 0.8812          
+            Sensitivity : 0.9344          
+            Specificity : 0.4957          
+         Pos Pred Value : 0.8810          
          Neg Pred Value : 0.6542          
              Prevalence : 0.7998          
-         Detection Rate : 0.7472          
-   Detection Prevalence : 0.8480          
-      Balanced Accuracy : 0.7155          
+         Detection Rate : 0.7474          
+   Detection Prevalence : 0.8483          
+      Balanced Accuracy : 0.7150          
                                           
-       'Positive' Class : No   ' 
+       'Positive' Class : No '
+
+#Logit 3.3
+alpha lambda
+2 0.855  1e-04
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 126906  23755
+Si   5030   9269
+
+Accuracy : 0.8255          
+95% CI : (0.8237, 0.8273)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.308           
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9619          
+            Specificity : 0.2807          
+         Pos Pred Value : 0.8423          
+         Neg Pred Value : 0.6482          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7693          
+   Detection Prevalence : 0.9133          
+      Balanced Accuracy : 0.6213          
+                                          
+       'Positive' Class : No ' 
 
 #KNN
 Accuracy was used to select the optimal model using the largest value.

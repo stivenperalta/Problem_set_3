@@ -319,3 +319,97 @@ mod_rf_reg2 <- train(
   metric = "MAE",
   tuneGrid = gridreg # bestTune = alpha  0.55 lambda 31446558
 )
+
+
+# RESULTADOS --------------------------------------------------------------
+
+#Elastic net con data desbalanceada
+alpha   lambda
+50   0.9 867.3046
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction      0      1
+0 124360  19032
+1   7576  13992
+
+Accuracy : 0.8387          
+95% CI : (0.8369, 0.8405)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.421           
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9426          
+            Specificity : 0.4237          
+         Pos Pred Value : 0.8673          
+         Neg Pred Value : 0.6487          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7539          
+   Detection Prevalence : 0.8693          
+      Balanced Accuracy : 0.6831          
+                                          
+       'Positive' Class : 0  ' 
+
+#Elastic net con data balanceada (UPSAMPLE)
+
+alpha   lambda
+40 0.625 74519.15
+
+glmnet variable importance
+
+only 20 most important variables shown (out of 34)
+
+Overall
+Porcentaje_ocupados                  100.0000
+Nivel_educativoUniversitaria          83.3226
+Tipo_de_trabajo3                      62.5434
+seg_soc2                              51.9053
+seg_soc1                              41.4927
+Tipo_de_trabajo6                      26.3309
+seg_soc3                              21.1317
+cuartos_hog                           10.3566
+nper                                  10.2279
+d_arriendo                             5.8454
+v.cabeceraVive en cabecera             5.3428
+Nivel_educativoBásica primaria         4.9496
+Tipo_de_trabajo5                       4.2550
+TipodeviviendaArriendo o subarriendo   3.0775
+Educacion_promedio                     1.9954
+edad                                   0.6333
+Jefe_mujerJefe de hogar es mujer       0.0000
+TipodeviviendaOtra                     0.0000
+Nivel_educativoMedia                   0.0000
+Nivel_educativoPreescolar              0.0000
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction      0      1
+0 155364      0
+1   9596      0
+
+Accuracy : 0.9418         
+95% CI : (0.9407, 0.943)
+No Information Rate : 1              
+P-Value [Acc > NIR] : 1              
+
+Kappa : 0              
+
+Mcnemar's Test P-Value : <2e-16         
+                                         
+            Sensitivity : 0.9418         
+            Specificity :     NA         
+         Pos Pred Value :     NA         
+         Neg Pred Value :     NA         
+             Prevalence : 1.0000         
+         Detection Rate : 0.9418         
+   Detection Prevalence : 0.9418         
+      Balanced Accuracy :     NA         
+                                         
+       'Positive' Class : 0              
+                                ' 
+

@@ -413,7 +413,6 @@ head(predictTest_logit3_3)
 
 confusionMatrix(data = predictTest_logit3_3$pred, reference=predictTest_logit3_3$obs)
 
-
 #Calculando Youden J statistic
 #Youden's J = Sensitivity + Specificity - 1
 #youden_j <- mycoords$sensitivities + mycoords$specificities - 1

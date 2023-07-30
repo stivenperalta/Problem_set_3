@@ -69,7 +69,7 @@ set.seed(2023)
 
  
 #hacemos la grilla para los hiperparámetros
-hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.856, 0.01), # iremos variando los valores
+hyperparameter_grid <- expand.grid(alpha = seq(0.855, 0.856, 0.001), # iremos variando los valores
                                    lambda = seq(0, 0.0005, 0.0001)) # iremos variando los valores
 
 
@@ -157,6 +157,10 @@ plot(logit3$results$lambda,
 set.seed(2023)
 down_train <- downSample(x = train[, -ncol(train)], #hacemos esto para balancear las muestras
                          y = train$pobre)
+set.seed(2023)
+up_train <- upSample(x = train[, -ncol(train)], #hacemos esto para balancear las muestras
+                         y = train$pobre)
+
 
 set.seed(2023)
 logit4 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
@@ -164,10 +168,10 @@ logit4 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                 + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
                 +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
                 +int5 +int6+ int7,
-                data = down_train,
+                data = up_train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
-                trControl = ctrl2,
+                trControl = ctrl,
                 tuneGrid = hyperparameter_grid,
                 family= "binomial"
 )
@@ -245,12 +249,12 @@ head(predictTest_logit3)
 
 confusionMatrix(data = predictTest_logit3$pred, reference=predictTest_logit3$obs)
 
-#Logit4
+#Logit4- evaluamos en toda la muestra y no en el up_train
 
 predictTest_logit4 <- data.frame(
-  obs = up_train$pobre,                    ## observed class labels
-  predict(logit4, type = "prob"),         ## predicted class probabilities
-  pred = predict(logit4, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
+  obs = train$pobre,                    ## observed class labels
+  predict(logit4, newdata=train, type = "prob"),         ## predicted class probabilities
+  pred = predict(logit4, newdata=train, type = "raw")    ## predicted class labels (esto luego lo sacamos porque vamos a variar el corte)
 )
 
 head(predictTest_logit4)
@@ -269,13 +273,10 @@ legend("bottomright", legend = c("Sensitivity", "Specificity"), col = c("red", "
 
 #Nueva matiz
 predicted_probabilities <- predictTest_logit4$Si
-new_cutoff<-0.50
+new_cutoff<-0.82
 predictTest_logit4$new_thres <- factor(ifelse(predicted_probabilities > new_cutoff, "Si", "No"))
 
 confusionMatrix(data = predictTest_logit4$new_thres, reference=predictTest_logit4$obs)
-
-
-
 
 #Calculando Youden J statistic
 #Youden's J = Sensitivity + Specificity - 1
@@ -302,7 +303,7 @@ test_logit2$pobre <- ifelse(test_logit2$pobre == "No", 0, 1)
 head(test_logit2) #evalúo que la base esté correctamente creada
 write.csv(test_logit2,"../stores/logit2.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-# Logit2.1: Exporto prediccion con logit 2 pero con corte de 2.5
+# Logit2.1: Exporto prediccion con logit 2 pero con corte de 3.5
 test$pobre <- predict(logit2, newdata = test, type="prob") #adaptamos 
 test$pobre <- test$pobre$Si
 test$pobre <- as.factor(ifelse(test$pobre > 0.35, "Si", "No"))
@@ -332,11 +333,12 @@ test_logit3$pobre <- ifelse(test_logit3$pobre == "No", 0, 1)
 head(test_logit3) #evalúo que la base esté correctamente creada
 write.csv(test_logit3,"../stores/logit3.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
-# Logit3: Exporto la predicción en csv para cargar en Kaggle
-
-test$pobre <- predict(logit4, newdata = test) #adaptamos 
+#Logit4: Exporto la predicción en csv para cargarla en Kaggle con corte 0.82
+test$pobre <- predict(logit4, newdata = test, type="prob") #adaptamos 
+test$pobre <- test$pobre$Si
+test$pobre <- as.factor(ifelse(test$pobre > 0.82, "Si", "No"))
 test_logit4 <- test %>% #organizo el csv para poder cargarlo en kaggle
-  select(id,pobre)
+  dplyr::select(id,pobre)
 test_logit4$pobre <- ifelse(test_logit4$pobre == "No", 0, 1)
 head(test_logit4) #evalúo que la base esté correctamente creada
 write.csv(test_logit4,"../stores/logit4.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
@@ -486,9 +488,9 @@ nb1 <- train(pobre ~
               data = train, 
               method = "nb",
               trControl = ctrl,
-              tuneGrid=expand.grid(fL=seq(0,1,0.1), #fl es la correción de laplace, trata de satisface el problema, warning de las probabilidades=0 (ajusta probabilidades)
+              tuneGrid=expand.grid(fL=seq(0,0.5,0.1), #fl es la correción de laplace, trata de satisface el problema, warning de las probabilidades=0 (ajusta probabilidades)
                                   usekernel=TRUE, #otro parámetro
-                                  adjust=seq(0,1,0.1)))
+                                  adjust=seq(0.5,1,0.1)))
 nb1
 
 v.cabecera
@@ -625,37 +627,36 @@ Mcnemar's Test P-Value : < 2.2e-16
                                           
        'Positive' Class : No     '
 
-#LOGIT4- con 100 folds y downtrain. no tuvo mejora en accuracy asi que no se subio a kaggle
-> logit4$bestTune
+#LOGIT4- con uptrain y corte en 0.82
 alpha lambda
-3 0.855  2e-04
+2 0.855  1e-04
 
 Confusion Matrix and Statistics
 
 Reference
 Prediction     No     Si
-No 104386  23624
-Si  27550 108312
+No 125358  17558
+Si   6578  15466
 
-Accuracy : 0.8061          
-95% CI : (0.8046, 0.8076)
-No Information Rate : 0.5             
-P-Value [Acc > NIR] : < 2.2e-16       
+Accuracy : 0.8537         
+95% CI : (0.852, 0.8554)
+No Information Rate : 0.7998         
+P-Value [Acc > NIR] : < 2.2e-16      
 
-Kappa : 0.6121          
+Kappa : 0.478          
 
-Mcnemar's Test P-Value : < 2.2e-16       
-                                          
-            Sensitivity : 0.7912          
-            Specificity : 0.8209          
-         Pos Pred Value : 0.8155          
-         Neg Pred Value : 0.7972          
-             Prevalence : 0.5000          
-         Detection Rate : 0.3956          
-   Detection Prevalence : 0.4851          
-      Balanced Accuracy : 0.8061          
-                                          
-       'Positive' Class : No  ' 
+Mcnemar's Test P-Value : < 2.2e-16      
+                                         
+            Sensitivity : 0.9501         
+            Specificity : 0.4683         
+         Pos Pred Value : 0.8771         
+         Neg Pred Value : 0.7016         
+             Prevalence : 0.7998         
+         Detection Rate : 0.7599         
+   Detection Prevalence : 0.8664         
+      Balanced Accuracy : 0.7092         
+                                         
+       'Positive' Class : No 
 
 
 #KNN
@@ -738,3 +739,24 @@ Resampling results:
   
   Accuracy   Kappa    
 0.7868028  0.3940926
+
+#Naive Bayes
+Naive Bayes 
+
+164960 samples
+9 predictor
+2 classes: 'No', 'Si' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 148464, 148464, 148464, 148464, 148465, 148464, ... 
+Resampling results:
+  
+  Accuracy   Kappa    
+0.8153916  0.1414126
+
+Tuning parameter 'fL' was held constant at a value of 0.2
+Tuning
+parameter 'usekernel' was held constant at a value of TRUE
+Tuning
+parameter 'adjust' was held constant at a value of 1

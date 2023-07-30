@@ -188,7 +188,10 @@ logit3_1 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                 + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
                 + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
                 +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
-                +int5 +int6+ int7 + int8, #especifico mi formula. primero utilizaremos todos los predictores "."
+                +int5 +int6+ int7 + int8 + edad*edad+ depto + Regimen_salud + ing_hor_ext
+                +prima + bonif + sub_trans+ subsid_educ +alim_trab+ viv_pag_trab+ ing_esp 
+                + bonif_anual + fondo_pensiones + deseo_hor + pagos_arr_pen
+                +din_otr_per+ pet, #especifico mi formula. primero utilizaremos todos los predictores "."
                 data = train,
                 metric="Accuracy", #metrica de performance
                 method = "glmnet", #logistic regression with elastic net regularization
@@ -197,12 +200,33 @@ logit3_1 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                 family= "binomial"
 )
 
+#revisamos las variables
+varImp(logit3_1)
 
 #para tune logit3_1
 plot(logit3_1$results$lambda,
      logit3_1$results$Accuracy,
      xlab="lambda",
      ylab="Accuracy")
+
+#LOGIT 3.2
+set.seed(2023)
+logit3_2 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
+                  + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
+                  + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
+                  +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
+                  +int5 +int6+ int7 + int8 + edad*edad+ depto + Regimen_salud + ing_hor_ext
+                  +prima + bonif + sub_trans+ subsid_educ +alim_trab+ viv_pag_trab+ ing_esp 
+                  + bonif_anual + fondo_pensiones + deseo_hor + pagos_arr_pen
+                  +din_otr_per+ pet, #especifico mi formula. primero utilizaremos todos los predictores "."
+                  data = train,
+                  metric="Accuracy", #metrica de performance
+                  method = "glmnet", #logistic regression with elastic net regularization
+                  trControl = ctrl,
+                  tuneGrid = hyperparameter_grid,
+                  family= "binomial"
+)
+
 
 # LOGIT BESTUNES ----------------------------------------------------------
 
@@ -301,6 +325,35 @@ predictTest_logit4$new_thres <- factor(ifelse(predicted_probabilities > new_cuto
 
 confusionMatrix(data = predictTest_logit4$new_thres, reference=predictTest_logit4$obs)
 
+#Logit3_1
+predictTest_logit3_1 <- data.frame(
+  obs = train$pobre,                    ## observed class labels
+  predict(logit3_1, type = "prob"),         ## predicted class probabilities
+  pred = predict(logit3_1, type = "raw")    ## predicted class labels 
+)
+
+head(predictTest_logit3_1)
+
+confusionMatrix(data = predictTest_logit3_1$pred, reference=predictTest_logit3_1$obs)
+
+#Evaluando los cortes/thresholds (SE EVALUO DIFERENTES CORTES Y EL MEJOR SIGUE SIENDO 0.5)
+roc_data <- roc(predictTest_logit3_1$obs, predictTest_logit3_1$Si)
+plot(roc_data, main = "ROC Curve", col = "purple", lwd = 2) #vemos nuestra curva ROC. Estamos muy alto en sensitivity y bajo en specificity
+mycoords <- coords(roc_data, "all")
+
+plot(mycoords$threshold, mycoords$sensitivity, type = "l", col = "red",
+     xlab = "Cutoff", ylab = "Sensitivity", main = "Sensitivity vs. Cutoff")
+lines(mycoords$threshold, mycoords$specificity, col = "blue")
+legend("bottomright", legend = c("Sensitivity", "Specificity"), col = c("red", "blue"), lwd = 2)
+
+#Nueva matiz
+predicted_probabilities <- predictTest_logit3_1$Si
+new_cutoff<-0.50
+predictTest_logit3_1$new_thres <- factor(ifelse(predicted_probabilities > new_cutoff, "Si", "No"))
+
+confusionMatrix(data = predictTest_logit3_1$new_thres, reference=predictTest_logit3_1$obs)
+
+
 #Calculando Youden J statistic
 #Youden's J = Sensitivity + Specificity - 1
 #youden_j <- mycoords$sensitivities + mycoords$specificities - 1
@@ -366,6 +419,13 @@ test_logit4$pobre <- ifelse(test_logit4$pobre == "No", 0, 1)
 head(test_logit4) #evalúo que la base esté correctamente creada
 write.csv(test_logit4,"../stores/logit4.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
+#Logit 3.1
+test$pobre <- predict(logit3_1, newdata = test) #adaptamos 
+test_logit3_1 <- test %>% #organizo el csv para poder cargarlo en kaggle
+  dplyr::select(id,pobre)
+test_logit3_1$pobre <- ifelse(test_logit3_1$pobre == "No", 0, 1)
+head(test_logit3_1) #evalúo que la base esté correctamente creada
+write.csv(test_logit3_1,"../stores/logit3_1.csv",row.names=FALSE) # Exporto la predicción para cargarla en Kaggle
 
 
 # LDA -------------------------------------
@@ -679,8 +739,38 @@ Mcnemar's Test P-Value : < 2.2e-16
    Detection Prevalence : 0.8664         
       Balanced Accuracy : 0.7092         
                                          
-       'Positive' Class : No 
+       'Positive' Class : No '
 
+#Logit 3.1
+alpha lambda
+2 0.855  1e-04
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 124156  15116
+Si   7780  17908
+
+Accuracy : 0.8612          
+95% CI : (0.8595, 0.8629)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.5272          
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9410          
+            Specificity : 0.5423          
+         Pos Pred Value : 0.8915          
+         Neg Pred Value : 0.6971          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7526          
+   Detection Prevalence : 0.8443          
+      Balanced Accuracy : 0.7417          
+                                          
+       'Positive' Class : No   ' 
 
 #KNN
 Accuracy was used to select the optimal model using the largest value.

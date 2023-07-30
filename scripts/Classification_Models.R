@@ -200,8 +200,18 @@ logit3_1 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                 family= "binomial"
 )
 
-#revisamos las variables
+#revisamos las variables (para luego armar el logit3_2)
 varImp(logit3_1)
+var_imp <- varImp(logit3_1)$importance %>%
+       as.data.frame() %>%
+       rownames_to_column() %>%
+       arrange(desc(Overall))
+top_30_imp_variables <- var_imp %>%
+       top_n(30, wt = Overall)
+ggplot(top_30_imp_variables, aes(x = fct_inorder(rowname), y = Overall)) +
+       geom_col() +
+       coord_flip() +
+       theme_bw()
 
 #para tune logit3_1
 plot(logit3_1$results$lambda,
@@ -209,16 +219,11 @@ plot(logit3_1$results$lambda,
      xlab="lambda",
      ylab="Accuracy")
 
-#LOGIT 3.2
+#LOGIT 3.2 (9 variables sin contar interacciones)
 set.seed(2023)
-logit3_2 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
-                  + d_arriendo + Jefe_mujer+ PersonaxCuarto+ Tipodevivienda
-                  + Educacion_promedio +edad+ seg_soc+ Nivel_educativo+ Tipo_de_trabajo
-                  +otro_trab + fondo_pensiones +ocupado + int1 + int2 +int3 +int4
-                  +int5 +int6+ int7 + int8 + edad*edad+ depto + Regimen_salud + ing_hor_ext
-                  +prima + bonif + sub_trans+ subsid_educ +alim_trab+ viv_pag_trab+ ing_esp 
-                  + bonif_anual + fondo_pensiones + deseo_hor + pagos_arr_pen
-                  +din_otr_per+ pet, #especifico mi formula. primero utilizaremos todos los predictores "."
+logit3_2 <- train(pobre~ Porcentaje_ocupados+ edad + edad*edad+ int4 + Tipo_de_trabajo+ pagos_arr_pen
+                  + fondo_pensiones + int7 + Nivel_educativo+ int5 + viv_pag_trab+ Regimen_salud
+                  + Tipodevivienda, #especifico mi formula. primero utilizaremos todos los predictores "."
                   data = train,
                   metric="Accuracy", #metrica de performance
                   method = "glmnet", #logistic regression with elastic net regularization
@@ -226,6 +231,36 @@ logit3_2 <- train(pobre~Porcentaje_ocupados+ + v.cabecera +cuartos_hog + nper
                   tuneGrid = hyperparameter_grid,
                   family= "binomial"
 )
+
+#revisamos las variables
+varImp(logit3_2)
+
+#para tune logit3_1
+plot(logit3_2$results$lambda,
+     logit3_2$results$Accuracy,
+     xlab="lambda",
+     ylab="Accuracy")
+
+#LOGIT 3.3 (6 variables (sin contar interacciones)
+set.seed(2023)
+logit3_2 <- train(pobre~ Porcentaje_ocupados+ edad + edad*edad+ int4 + Tipo_de_trabajo
+                  + Nivel_educativo+ pagos_arr_pen + fondo_pensiones + int7, #especifico mi formula. primero utilizaremos todos los predictores "."
+                  data = train,
+                  metric="Accuracy", #metrica de performance
+                  method = "glmnet", #logistic regression with elastic net regularization
+                  trControl = ctrl,
+                  tuneGrid = hyperparameter_grid,
+                  family= "binomial"
+)
+
+#revisamos las variables
+varImp(logit3_3)
+
+#para tune logit3_1
+plot(logit3_3$results$lambda,
+     logit3_3$results$Accuracy,
+     xlab="lambda",
+     ylab="Accuracy")
 
 
 # LOGIT BESTUNES ----------------------------------------------------------
@@ -236,6 +271,7 @@ logit2$bestTune
 logit3$bestTune
 logit4$bestTune
 logit3_1$bestTune
+logit3_2$bestTune
 
 logit1
 logit2
@@ -352,6 +388,17 @@ new_cutoff<-0.50
 predictTest_logit3_1$new_thres <- factor(ifelse(predicted_probabilities > new_cutoff, "Si", "No"))
 
 confusionMatrix(data = predictTest_logit3_1$new_thres, reference=predictTest_logit3_1$obs)
+
+#Logit3_2
+predictTest_logit3_2 <- data.frame(
+  obs = train$pobre,                    ## observed class labels
+  predict(logit3_2, type = "prob"),         ## predicted class probabilities
+  pred = predict(logit3_2, type = "raw")    ## predicted class labels 
+)
+
+head(predictTest_logit3_2)
+
+confusionMatrix(data = predictTest_logit3_2$pred, reference=predictTest_logit3_2$obs)
 
 
 #Calculando Youden J statistic
@@ -769,6 +816,37 @@ Mcnemar's Test P-Value : < 2.2e-16
          Detection Rate : 0.7526          
    Detection Prevalence : 0.8443          
       Balanced Accuracy : 0.7417          
+                                          
+       'Positive' Class : No   ' 
+
+#Logit 3.2
+alpha lambda
+4 0.855  3e-04
+
+Confusion Matrix and Statistics
+
+Reference
+Prediction     No     Si
+No 123265  16620
+Si   8671  16404
+
+Accuracy : 0.8467          
+95% CI : (0.8449, 0.8484)
+No Information Rate : 0.7998          
+P-Value [Acc > NIR] : < 2.2e-16       
+
+Kappa : 0.4738          
+
+Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.9343          
+            Specificity : 0.4967          
+         Pos Pred Value : 0.8812          
+         Neg Pred Value : 0.6542          
+             Prevalence : 0.7998          
+         Detection Rate : 0.7472          
+   Detection Prevalence : 0.8480          
+      Balanced Accuracy : 0.7155          
                                           
        'Positive' Class : No   ' 
 

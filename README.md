@@ -15,10 +15,10 @@ Como principal conclusión, no se evidencian mayores diferencias en la capacidad
 
 Los archivos en este repositorio están contenidos en las siguientes carpetas:
 
-- `document`: Contiene los documentos revisados para el desarrollo del trabajo, incluyendo el [documento final](document/Taller_3.pdf) del trabajo.
+- `document`: Contiene los documentos revisados para el desarrollo del trabajo, incluyendo el [documento final](document/Problem_set_3.pdf) del trabajo.
 - `scripts`: Contiene todos los scripts en R para el desarrollo del trabajo.
 - `stores`: Contiene los data sets descargados de la pagina web de la competencia en [Kaggle](https://www.kaggle.com/competitions/uniandes-bdml-202313-ps31) y el dataset final una vez realizado el procesamiento de datos descrito en el anexo 1.
-- `views`: Contiene todas las imágenes y tablas generadas, las cuales se incluyen en el  [documento final](document/Taller_3.pdf)  del trabajo.
+- `views`: Contiene todas las imágenes y tablas generadas, las cuales se incluyen en el  [documento final](document/Problem_set_3.pdf)  del trabajo.
 
 
 ### Integrantes

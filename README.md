@@ -5,16 +5,20 @@
 
 
 ### Resumen del trabajo
+Este trabajo busca construir un modelo predictivo que permita clasificar los hogares en condición de pobreza a partir de la información recolectada por el DANE, en el marco de la Misión para el Empalme de las Series de Empleo, Pobreza y Desigualdad (MESEP). El interés principal de este estudio surge de la necesidad de identificar aquellos hogares que se encuentran por debajo de la línea de pobreza para enfocar las políticas públicas que buscan reducir esta problemática, tales como la focalización y distribución de subsidios a poblaciones vulnerables. 
 
+Para la definición del modelo predictivo se construye una base que consolida datos relevantes a nivel de hogar, considerando características del jefe del hogar (sexo, edad, nivel educativo, tipo de trabajo, entre otras), del grupo familiar (número de integrantes, porcentaje de ocupación, promedio de años de ocupación, entre otras), variables de ingreso (ingresos laborales, primas, subsidios, entre otras) y características de la vivienda (número de habitaciones, condición de tenencia, entre otras). 
+
+Para identificar el modelo predictivo con mejor ajuste se definieron dos aproximaciones, por un lado, se plantearon modelos de clasificación tomando como variable independiente la dummy que indica si un hogar este clasificado como pobre (1) o no (0). Por otro lado, se plantearon modelos de predicción del ingreso de los hogares, para posteriormente identificar si el hogar es pobre o no con respecto a la línea de pobreza. Como resultado, se identifica que ambas aproximaciones resultan en una precisión (Accuracy) entre 78% y 86%, donde el modelo que presenta el mejor ajuste corresponde al modelo de clasificación a través de regresión logística con regularización por elastic-net (modelo 4) con una precisión del 86%.
 
 ### Estructura del repositorio
 
 Los archivos en este repositorio están contenidos en las siguientes carpetas:
 
-- `document`: Contiene los documentos revisados para el desarrollo del trabajo, incluyendo el [documento final](document/Taller_2.pdf) del trabajo.
+- `document`: Contiene los documentos revisados para el desarrollo del trabajo, incluyendo el [documento final](document/Taller_3.pdf) del trabajo.
 - `scripts`: Contiene todos los scripts en R para el desarrollo del trabajo.
-- `stores`: Contiene los data sets descargados de la pagina web de la competencia en [Kaggle](https://www.kaggle.com/competitions/uniandes-bdml-202313-ps2) y el dataset final unavez realizado el procesamiento de datos descrito en el  [anexo 1](document/Anexo_1.pdf). Los datos de fuentes externas tienen un peso muy alto para este repositorio, pero se pueden descargar en este [enlace](https://drive.google.com/file/d/1pvOZqn-tUOfV-cS8v01EGpBHa63mAj9E/view) de acuerdo con lo descrito en el [anexo 1](document/Anexo_1.pdf).
-- `views`: Contiene todas las imágenes y tablas generadas, las cuales se incluyen en el  [documento final](document/Taller_2.pdf)  del trabajo.
+- `stores`: Contiene los data sets descargados de la pagina web de la competencia en [Kaggle](https://www.kaggle.com/competitions/uniandes-bdml-202313-ps31) y el dataset final una vez realizado el procesamiento de datos descrito en el  [anexo 1](document/Anexo_1.pdf).
+- `views`: Contiene todas las imágenes y tablas generadas, las cuales se incluyen en el  [documento final](document/Taller_3.pdf)  del trabajo.
 
 
 ### Integrantes
